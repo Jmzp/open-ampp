@@ -44,8 +44,11 @@ extra_libs=""
   # pkg-config solo ve nuestras dependencias: así no se cuelan librerías de Homebrew u otras del sistema.
   export PKG_CONFIG_PATH="" PKG_CONFIG_LIBDIR="$DEPS/lib/pkgconfig"
   # Módulos que requieren librerías externas (brotli, nghttp2, lua, curl/jansson) y no aportan en local.
+  # Igual los drivers DBD/LDAP de APR-util: los detectaría desde Homebrew (p. ej. unixodbc en /usr/local).
   CFLAGS="-O2 -fPIC" LIBS="$extra_libs" ./configure \
     --disable-brotli --disable-http2 --disable-proxy-http2 --disable-lua --disable-md \
+    --without-odbc --without-pgsql --without-mysql --without-sqlite2 --without-sqlite3 \
+    --without-oracle --without-freetds --without-berkeley-db --without-gdbm --without-ndbm --without-ldap \
     --prefix="$PREFIX" \
     --with-included-apr \
     --with-pcre="$DEPS/bin/pcre2-config" \
