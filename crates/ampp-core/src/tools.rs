@@ -295,6 +295,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn uninstall_removes_the_tool_folder() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(tmp.path());
+        uninstall(&paths, Extra::Composer).unwrap();
+        fs::create_dir_all(dir(&paths, Extra::Composer)).unwrap();
+        fs::write(file(&paths, Extra::Composer), "").unwrap();
+        uninstall(&paths, Extra::Composer).unwrap();
+        assert!(!dir(&paths, Extra::Composer).exists());
+        assert_eq!(Extra::ALL.map(Extra::label), ["phpMyAdmin", "Composer"]);
+    }
+
+    #[test]
     fn shims_point_to_active_php_and_composer() {
         let tmp = tempfile::tempdir().unwrap();
         let paths = AppPaths::new(tmp.path());

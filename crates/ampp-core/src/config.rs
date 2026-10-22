@@ -481,4 +481,64 @@ mod tests {
         ensure_docroot(&paths).unwrap();
         assert_eq!(fs::read_to_string(www.join("index.php")).unwrap(), "mine");
     }
+
+    #[test]
+    fn welcome_page_links_the_tools_and_lists_projects() {
+        let tmp = tempfile::tempdir().unwrap();
+        let www = ensure_docroot(&AppPaths::new(tmp.path())).unwrap();
+        let page = fs::read_to_string(www.join("index.php")).unwrap();
+        assert!(!page.contains("{{"), "no placeholders may remain");
+        assert!(page.starts_with("<?php $projects = glob("), "the project list is computed before any output");
+        for part in ["href=\"info.php\"", "href=\"/phpmyadmin/\"", "PHP_VERSION", "prefers-color-scheme: dark", "rawurlencode"] {
+            assert!(page.contains(part), "missing {part}");
+        }
+        assert_eq!(fs::read_to_string(www.join("info.php")).unwrap(), "<?php phpinfo();\n");
+    }
+
+    #[test]
+    fn mariadb_conf_points_at_the_datadir_and_port() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(tmp.path());
+        let inst =
+            Installation { tool: Tool::Mariadb, id: "11.4.5".into(), version: "11.4.5".into(), root: "/opt/mdb".into(), system: false };
+        let datadir = paths.mariadb_data("11.4");
+        let text = fs::read_to_string(write_mariadb(&paths, &inst, 3307, &datadir).unwrap()).unwrap();
+        assert!(text.contains("basedir=\"/opt/mdb\""));
+        assert!(text.contains(&format!("datadir=\"{}\"", slash(&datadir))));
+        assert_eq!(text.matches("port=3307").count(), 2, "server and client sections");
+        assert!(text.contains("bind-address=127.0.0.1"));
+        assert_eq!(text.contains("socket="), !cfg!(windows));
+        assert!(!text.contains("{{"));
+    }
+
+    #[test]
+    fn slash_uses_forward_slashes() {
+        assert_eq!(slash(Path::new(r"C:\Users\me\www")), "C:/Users/me/www");
+    }
+
+    /// The toggleable extensions are the DLLs in `ext/`; enabled ones follow XAMPP's order.
+    #[cfg(windows)]
+    #[test]
+    fn windows_extensions_come_from_ext_dir() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().join("php");
+        fs::create_dir_all(root.join("ext")).unwrap();
+        for dll in ["php_curl.dll", "php_mbstring.dll", "php_bz2.dll", "php_intl.dll", "php_opcache.dll", "readme.txt"] {
+            fs::write(root.join("ext").join(dll), "").unwrap();
+        }
+        let inst = Installation { tool: Tool::Php, id: "8.4.1".into(), version: "8.4.1".into(), root, system: false };
+        assert_eq!(php_optional_extensions(&inst), ["bz2", "curl", "intl", "mbstring", "opcache"]);
+
+        let mut settings = PhpSettings::default();
+        assert_eq!(php_enabled_extensions(&inst, &settings), ["bz2", "curl", "mbstring"], "XAMPP's defaults that exist");
+        settings.extensions = Some(vec!["opcache".into(), "intl".into(), "curl".into(), "missing".into()]);
+        assert_eq!(php_enabled_extensions(&inst, &settings), ["curl", "intl", "opcache"]);
+
+        let mut state = State::default();
+        state.php = settings;
+        let paths = AppPaths::new(tmp.path().join("data"));
+        let ini = fs::read_to_string(write_php(&paths, &inst, &state).unwrap().ini).unwrap();
+        assert!(ini.contains(&format!("extension_dir = \"{}\"", slash(&inst.root.join("ext")))));
+        assert!(ini.contains("extension=curl\nextension=intl\nzend_extension=opcache"));
+    }
 }

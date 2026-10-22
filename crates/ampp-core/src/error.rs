@@ -101,3 +101,50 @@ impl<T> IoContext<T> for std::io::Result<T> {
         self.map_err(|source| Error::Io { path: path.into(), source })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn messages_carry_the_details() {
+        let io = || std::io::Error::new(std::io::ErrorKind::NotFound, "gone");
+        let cases = [
+            (Error::Io { path: "/data/state.json".into(), source: io() }, vec!["/data/state.json", "gone"]),
+            (
+                Error::Json { path: "/data/state.json".into(), source: serde_json::from_str::<u8>("x").unwrap_err() },
+                vec!["/data/state.json"],
+            ),
+            (Error::Catalog("no packages".into()), vec!["no packages"]),
+            (
+                Error::Checksum { file: "php.zip".into(), expected: "aa".into(), actual: "bb".into() },
+                vec!["php.zip", "aa", "bb"],
+            ),
+            (Error::Archive { path: "/tmp/x.zip".into(), reason: "truncated".into() }, vec!["/tmp/x.zip", "truncated"]),
+            (Error::NotInCatalog { tool: Tool::Php, version: "7.4".into() }, vec!["PHP", "7.4"]),
+            (Error::NotInstalled { tool: Tool::Mariadb, version: "11.4.5".into() }, vec!["MariaDB", "11.4.5"]),
+            (Error::NoActiveVersion(Tool::Apache), vec!["Apache"]),
+            (Error::PortInUse { tool: Tool::Apache, port: 8080 }, vec!["Apache", "8080"]),
+            (Error::ServiceFailed { tool: Tool::Php, reason: "boom".into() }, vec!["PHP", "boom"]),
+            (Error::InvalidSetting("memory_limit".into()), vec!["memory_limit"]),
+            (Error::ExtraNotInCatalog("composer".into()), vec!["composer"]),
+            (Error::NoDataDir, vec![]),
+            (Error::SystemInstall, vec!["Homebrew"]),
+        ];
+        for (err, parts) in cases {
+            let msg = err.to_string();
+            assert!(!msg.is_empty());
+            for part in parts {
+                assert!(msg.contains(part), "{msg:?} should mention {part:?}");
+            }
+        }
+    }
+
+    #[test]
+    fn io_errors_keep_their_path_and_source() {
+        let err = std::fs::read("/definitely/not/here").at("/definitely/not/here").unwrap_err();
+        assert!(matches!(&err, Error::Io { path, .. } if path == std::path::Path::new("/definitely/not/here")));
+        assert!(std::error::Error::source(&err).is_some());
+        assert!(std::error::Error::source(&Error::NoDataDir).is_none());
+    }
+}

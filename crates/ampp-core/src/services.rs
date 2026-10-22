@@ -573,6 +573,28 @@ mod tests {
         assert_eq!(PidRecord::parse(&rec.render()), Some(rec));
         assert_eq!(PidRecord::parse("42"), None, "old format: ignored");
     }
+
+    #[test]
+    fn tail_returns_the_last_bytes() {
+        let tmp = tempfile::tempdir().unwrap();
+        let log = tmp.path().join("x.log");
+        assert_eq!(tail(&log, 10), "", "a missing log is empty");
+        fs::write(&log, "first line\nsecond line\n").unwrap();
+        assert_eq!(tail(&log, 12), "second line\n");
+        assert_eq!(tail(&log, 1000), "first line\nsecond line\n");
+    }
+
+    #[test]
+    fn process_liveness_checks_the_name() {
+        let me = std::process::id();
+        let exe = std::env::current_exe().unwrap();
+        let name = exe.file_stem().unwrap().to_string_lossy().to_lowercase();
+        assert!(process_alive(me, &[&name[..4]]));
+        assert!(!process_alive(me, &["httpd"]), "a reused PID with another name is not ours");
+        assert!(!process_alive(u32::MAX - 1, &["httpd"]));
+        assert!(!owner_alive(u32::MAX - 1));
+        assert_eq!(expected_process_names(Tool::Php), ["php-fpm", "php-cgi"]);
+    }
 }
 
 /// Last `max` bytes of a log file (empty if it does not exist).

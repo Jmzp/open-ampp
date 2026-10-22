@@ -30,8 +30,8 @@ jobs:
           cache: npm
           cache-dependency-path: apps/desktop/package-lock.json
 
-      - name: ampp-core tests
-        run: cargo test -p ampp-core
+      - name: Rust tests (ampp-core, ampp-cli)
+        run: cargo test -p ampp-core -p ampp-cli
 
       - name: Build frontend
         working-directory: apps/desktop

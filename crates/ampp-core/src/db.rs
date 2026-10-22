@@ -55,6 +55,11 @@ pub async fn list(paths: &AppPaths, state: &State) -> Result<Vec<Database>> {
          GROUP BY s.schema_name ORDER BY s.schema_name",
     )
     .await?;
+    Ok(parse_databases(&out))
+}
+
+/// Parses `name<TAB>tables<TAB>bytes` rows, user databases first.
+fn parse_databases(out: &str) -> Vec<Database> {
     let mut dbs: Vec<Database> = out
         .lines()
         .filter_map(|line| {
@@ -67,7 +72,7 @@ pub async fn list(paths: &AppPaths, state: &State) -> Result<Vec<Database>> {
         })
         .collect();
     dbs.sort_by(|a, b| a.system.cmp(&b.system).then_with(|| a.name.cmp(&b.name)));
-    Ok(dbs)
+    dbs
 }
 
 /// `true` for names that are safe to use unquoted-ish in SQL and as folder names.
@@ -122,5 +127,52 @@ mod tests {
         assert!(!valid_name(""));
         assert!(!valid_name("x`; DROP DATABASE mysql; --"));
         assert!(!valid_name("con espacio"));
+        assert!(valid_name(&"a".repeat(64)));
+        assert!(!valid_name(&"a".repeat(65)), "MariaDB limits names to 64 characters");
+    }
+
+    #[test]
+    fn parses_databases_user_ones_first() {
+        let out = "information_schema\t79\t0\nmysql\t31\t2457600\nshop\t12\t98304\nblog\t0\t0\nbroken line\n";
+        let dbs = parse_databases(out);
+        let rows: Vec<(&str, u64, u64, bool)> = dbs.iter().map(|d| (d.name.as_str(), d.tables, d.size, d.system)).collect();
+        assert_eq!(
+            rows,
+            [
+                ("blog", 0, 0, false),
+                ("shop", 12, 98304, false),
+                ("information_schema", 79, 0, true),
+                ("mysql", 31, 2457600, true),
+            ]
+        );
+    }
+
+    #[test]
+    fn connection_is_local_root_without_password() {
+        let paths = AppPaths::new("/srv/ampp");
+        let mut state = State::default();
+        state.ports.mariadb = 3307;
+        let conn = connection(&paths, &state);
+        assert_eq!((conn.host.as_str(), conn.port, conn.user.as_str(), conn.password.as_str()), ("127.0.0.1", 3307, "root", ""));
+        assert_eq!(conn.socket.is_some(), !cfg!(windows), "PHP's `localhost` uses the socket on Unix only");
+    }
+
+    #[tokio::test]
+    async fn create_rejects_bad_names_before_touching_mariadb() {
+        let err = create(&AppPaths::new("/nonexistent"), &State::default(), "x`; DROP").await.unwrap_err();
+        assert!(matches!(err, Error::InvalidSetting(_)));
+    }
+
+    #[tokio::test]
+    async fn queries_need_an_active_installed_mariadb() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(tmp.path());
+        let mut state = State::default();
+        assert!(matches!(list(&paths, &state).await, Err(Error::NoActiveVersion(Tool::Mariadb))));
+        state.mark_installed(Tool::Mariadb, "11.4.5");
+        assert!(matches!(list(&paths, &state).await, Err(Error::NotInstalled { tool: Tool::Mariadb, .. })));
+        // Installed but without the client binary.
+        std::fs::create_dir_all(paths.bin(Tool::Mariadb, "11.4.5")).unwrap();
+        assert!(matches!(create(&paths, &state, "shop").await, Err(Error::NotInstalled { tool: Tool::Mariadb, .. })));
     }
 }

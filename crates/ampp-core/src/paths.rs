@@ -133,6 +133,25 @@ mod tests {
     use super::*;
 
     #[test]
+    fn tools_have_names_and_labels() {
+        assert_eq!(Tool::ALL.map(|t| t.to_string()), ["Apache", "PHP", "MariaDB"]);
+        let paths = AppPaths::new("/srv/ampp");
+        assert_eq!(paths.state_file(), Path::new("/srv/ampp/state.json"));
+        assert_eq!(paths.mariadb_data("11.4"), Path::new("/srv/ampp/data/mariadb/11.4"));
+    }
+
+    #[test]
+    fn open_ampp_home_overrides_the_data_dir() {
+        // Only read here, so setting it does not race with other tests that use explicit paths.
+        let tmp = tempfile::tempdir().unwrap();
+        // SAFETY: no other test reads or writes OPEN_AMPP_HOME.
+        unsafe { std::env::set_var("OPEN_AMPP_HOME", tmp.path()) };
+        let paths = AppPaths::from_system().unwrap();
+        unsafe { std::env::remove_var("OPEN_AMPP_HOME") };
+        assert_eq!(paths.root(), tmp.path());
+    }
+
+    #[test]
     fn layout_is_created_under_root() {
         let tmp = tempfile::tempdir().unwrap();
         let paths = AppPaths::new(tmp.path());

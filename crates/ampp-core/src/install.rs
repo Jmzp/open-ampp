@@ -155,4 +155,39 @@ mod tests {
         };
         assert_eq!(inst.minor_version(), "11.4");
     }
+
+    #[test]
+    fn finds_each_executable_only_when_present() {
+        let tmp = tempfile::tempdir().unwrap();
+        let root = tmp.path().to_path_buf();
+        let inst = |tool| Installation { tool, id: "x".into(), version: "x".into(), root: root.clone(), system: false };
+        let (php, mdb) = (inst(Tool::Php), inst(Tool::Mariadb));
+        assert!(php.php_fastcgi().is_none() && php.php_cli().is_none() && php.php_extension_dir().is_none());
+        assert!(mdb.mariadbd().is_none() && mdb.mariadb_admin().is_none() && mdb.mariadb_client().is_none());
+        assert!(mdb.mariadb_install_db().is_none());
+
+        let touch = |rel: String| {
+            let p = root.join(rel);
+            std::fs::create_dir_all(p.parent().unwrap()).unwrap();
+            std::fs::write(p, "").unwrap();
+        };
+        touch(if cfg!(windows) { "php-cgi.exe".into() } else { "sbin/php-fpm".into() });
+        touch(exe("php"));
+        std::fs::create_dir_all(root.join("ext")).unwrap();
+        for bin in ["mariadbd", "mariadb-admin", "mariadb", "mariadb-install-db"] {
+            touch(format!("bin/{}", exe(bin)));
+        }
+        assert!(php.php_fastcgi().is_some() && php.php_cli().is_some() && php.php_extension_dir().is_some());
+        assert!(mdb.mariadbd().is_some() && mdb.mariadb_admin().is_some() && mdb.mariadb_client().is_some());
+        assert!(mdb.mariadb_install_db().is_some());
+    }
+
+    #[test]
+    fn homebrew_only_exists_on_macos() {
+        if !cfg!(target_os = "macos") {
+            assert!(homebrew(Tool::Php).is_none());
+            let paths = AppPaths::new("/nonexistent");
+            assert!(matches!(locate(&paths, Tool::Php, HOMEBREW), Err(Error::NotInstalled { .. })));
+        }
+    }
 }
