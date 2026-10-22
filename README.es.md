@@ -30,7 +30,8 @@ Open AMPP es una alternativa moderna a XAMPP / MAMP / LAMPP. Abres la app, elige
 - ⌨️ **Comando `ampp`** para la terminal, además de los atajos `php`, `composer` y `mariadb` que usan siempre las versiones activas.
 - 🛡️ **Seguro por defecto**: los servicios escuchan solo en `127.0.0.1`, en puertos sin privilegios (8080, 3306, 90xx).
 - 🧹 **Apagado limpio**: al salir de la app se detiene todo lo que inició; MariaDB siempre se apaga de forma ordenada.
-- 🔄 **Actualizaciones automáticas** mediante versiones firmadas.
+- 🔒 **Parches de seguridad sin esperar**: las nuevas versiones de PHP se compilan solas cada día; la app recibe el catálogo actualizado y te ofrece **Actualizar a …** para las versiones que tengas instaladas.
+- 🔄 **Actualizaciones automáticas** de la propia app mediante versiones firmadas.
 
 ## 🧭 Plataformas y versiones
 
@@ -97,7 +98,8 @@ ampp up                     # inicia todo en primer plano; Ctrl+C lo detiene
 ampp stop [apache|php|mariadb]
 ampp list                   # versiones instaladas y disponibles
 ampp install php            # el PHP más reciente; también: ampp install mariadb 11.4.13, ampp install phpmyadmin
-ampp use php 8.3.32         # versión activa
+ampp upgrade                # lleva las versiones instaladas a su último parche
+ampp use php 8.3.36         # versión activa
 ampp php -v                 # pasa los argumentos al PHP activo (igual con composer y mariadb)
 ```
 
@@ -157,7 +159,7 @@ state.json                      versiones instaladas/activas, puertos y ajustes 
 | [`crates/ampp-cli`](crates/ampp-cli) | El comando `ampp` |
 | [`apps/desktop`](apps/desktop) | App Tauri 2 (`src-tauri/`) y UI React + TypeScript (`src/`) |
 | [`templates`](templates) | Plantillas de `httpd.conf`, `php.ini` (el de XAMPP), `php-fpm.conf` y `my.cnf` |
-| [`catalog`](catalog) | `manifest.json` con las versiones descargables y su generador |
+| [`catalog`](catalog) | `manifest.json` con las versiones descargables (solo el último parche de cada rama) y su generador |
 | [`binaries`](binaries) | Scripts que compilan Apache, MariaDB y PHP portables |
 | [`.github/workflows`](.github/workflows) | CI, compilación de binarios y publicación de instaladores |
 
@@ -181,7 +183,9 @@ OPEN_AMPP_MARIADB_PKG=dist/mariadb-….tar.gz \
 
 ## 📦 Binarios propios
 
-Apache, MariaDB y PHP no publican builds portables para macOS ni Linux, así que Open AMPP los compila con los scripts de [`binaries/`](binaries) y los publica como releases `bin-<herramienta>-<versión>` desde el workflow **Binaries** (ejecución manual).
+Apache, MariaDB y PHP no publican builds portables para macOS ni Linux, así que Open AMPP los compila con los scripts de [`binaries/`](binaries) y los publica como releases `bin-<herramienta>-<versión>` desde el workflow **Binaries**.
+
+- **Siempre al día**: los builds de PHP consultan en php.net la última versión de cada rama (8.2, 8.3, 8.4). El workflow corre a diario, compila solo lo que falte, lo publica y actualiza [`catalog/manifest.json`](catalog/manifest.json) en `main`. La app y `ampp` descargan ese catálogo al arrancar (sin red usan el incluido), así que los parches de seguridad llegan sin esperar una nueva versión de la app. Los builds de Apache y MariaDB se lanzan a mano.
 
 - **Relocalizables**: funcionan desde cualquier carpeta (`@rpath` en macOS, `$ORIGIN` en Linux).
 - **Autocontenidos**: OpenSSL, PCRE2 y expat se enlazan estáticamente; en Linux las librerías que no son de glibc van dentro del paquete y PHP es totalmente estático ([static-php-cli](https://github.com/crazywhalecc/static-php-cli)). El build falla si detecta una dependencia que no existiría en un sistema limpio (p. ej. librerías de Homebrew).
@@ -191,8 +195,8 @@ Apache, MariaDB y PHP no publican builds portables para macOS ni Linux, así que
 ```sh
 WORK=/tmp/ampp-build binaries/build-apache.sh dist
 WORK=/tmp/ampp-build binaries/build-mariadb.sh 11.4.13 dist   # requiere cmake ≥ 3.23 y bison ≥ 3
-WORK=/tmp/ampp-build binaries/build-php.sh 8.4.23 dist
-python3 catalog/generate.py                                    # después, regenera el catálogo
+WORK=/tmp/ampp-build binaries/build-php.sh 8.4 dist          # una rama se resuelve a su último parche
+GH_TOKEN=$(gh auth token) python3 catalog/generate.py         # después, regenera el catálogo
 ```
 
 ## 🚢 Publicar versiones
@@ -202,7 +206,7 @@ Al subir un tag `v*` corre el workflow **Release**: compila los instaladores de 
 ## 🗺️ Hoja de ruta
 
 - [x] **Fundaciones**: monorepo, `ampp-core`, app Tauri + React, CI en las 3 plataformas
-- [x] **Catálogo e instalador**: descargas con progreso, verificación SHA-256, gestor de versiones
+- [x] **Catálogo e instalador**: descargas con progreso, verificación SHA-256, gestor de versiones, catálogo remoto con actualizaciones de parche
 - [x] **Servicios**: Apache + PHP (FastCGI) + MariaDB, health checks, logs en vivo, apagado limpio
 - [x] **Binarios propios**: Apache, MariaDB y PHP (CLI + FPM) portables para macOS y Linux
 - [x] **Pulido**: icono en la bandeja, editor de `php.ini` y extensiones, phpMyAdmin, Composer, CLI `ampp`, interfaz en español e inglés

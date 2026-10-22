@@ -131,7 +131,7 @@ export function Tools({ state, onChanged }: { state: AppState; onChanged: () => 
         </details>
         <p className="muted small">
           {t.tools.cliIntro} <code>ampp up</code>, <code>ampp status</code>, <code>ampp install php</code>,{" "}
-          <code>ampp use php 8.3.32</code>…
+          <code>ampp upgrade</code>…
         </p>
       </section>
 

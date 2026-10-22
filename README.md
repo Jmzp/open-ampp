@@ -30,7 +30,8 @@ Open AMPP is a modern take on XAMPP / MAMP / LAMPP. Open the app, pick the versi
 - ⌨️ **`ampp` command** for the terminal, plus `php`, `composer` and `mariadb` shims that always use the active versions.
 - 🛡️ **Safe by default**: services listen on `127.0.0.1` only, on unprivileged ports (8080, 3306, 90xx).
 - 🧹 **Clean shutdown**: quitting the app stops everything it started; MariaDB is always shut down gracefully.
-- 🔄 **Auto-updates** through signed releases.
+- 🔒 **Security patches without waiting**: new PHP patch releases are built automatically every day; the app picks up the updated catalog and offers **Update to …** for your installed versions.
+- 🔄 **Auto-updates** of the app itself through signed releases.
 
 ## 🧭 Platforms and versions
 
@@ -97,7 +98,8 @@ ampp up                     # start everything in the foreground; Ctrl+C stops i
 ampp stop [apache|php|mariadb]
 ampp list                   # installed and available versions
 ampp install php            # latest PHP; also: ampp install mariadb 11.4.13, ampp install phpmyadmin
-ampp use php 8.3.32         # active version
+ampp upgrade                # move installed versions to their newest patch release
+ampp use php 8.3.36         # active version
 ampp php -v                 # passthrough to the active PHP (same for composer and mariadb)
 ```
 
@@ -157,7 +159,7 @@ state.json                  installed/active versions, ports and PHP settings
 | [`crates/ampp-cli`](crates/ampp-cli) | The `ampp` command |
 | [`apps/desktop`](apps/desktop) | Tauri 2 app (`src-tauri/`) and React + TypeScript UI (`src/`) |
 | [`templates`](templates) | `httpd.conf`, `php.ini` (XAMPP's), `php-fpm.conf` and `my.cnf` templates |
-| [`catalog`](catalog) | `manifest.json` with the downloadable versions, and its generator |
+| [`catalog`](catalog) | `manifest.json` with the downloadable versions (only the newest patch of each series), and its generator |
 | [`binaries`](binaries) | Scripts that build portable Apache, MariaDB and PHP |
 | [`.github/workflows`](.github/workflows) | CI, binary builds and installer releases |
 
@@ -181,7 +183,9 @@ OPEN_AMPP_MARIADB_PKG=dist/mariadb-….tar.gz \
 
 ## 📦 Our own binaries
 
-Apache, MariaDB and PHP have no official portable builds for macOS or Linux, so Open AMPP builds them with the scripts in [`binaries/`](binaries) and publishes them as `bin-<tool>-<version>` releases from the **Binaries** workflow (run manually).
+Apache, MariaDB and PHP have no official portable builds for macOS or Linux, so Open AMPP builds them with the scripts in [`binaries/`](binaries) and publishes them as `bin-<tool>-<version>` releases from the **Binaries** workflow.
+
+- **Always patched**: PHP builds ask php.net for the newest release of each series (8.2, 8.3, 8.4). The workflow runs daily, builds only what is missing, publishes it and refreshes [`catalog/manifest.json`](catalog/manifest.json) on `main`. The app and `ampp` download that catalog on startup (falling back to the bundled copy offline), so security fixes reach users without a new app release. Apache and MariaDB builds are started manually.
 
 - **Relocatable**: they work from any folder (`@rpath` on macOS, `$ORIGIN` on Linux).
 - **Self-contained**: OpenSSL, PCRE2 and expat are linked statically; on Linux any non-glibc library ships inside the package, and PHP is fully static ([static-php-cli](https://github.com/crazywhalecc/static-php-cli)). The build fails if it detects a dependency a clean system would not have (e.g. Homebrew libraries).
@@ -191,8 +195,8 @@ Apache, MariaDB and PHP have no official portable builds for macOS or Linux, so 
 ```sh
 WORK=/tmp/ampp-build binaries/build-apache.sh dist
 WORK=/tmp/ampp-build binaries/build-mariadb.sh 11.4.13 dist   # needs cmake ≥ 3.23 and bison ≥ 3
-WORK=/tmp/ampp-build binaries/build-php.sh 8.4.23 dist
-python3 catalog/generate.py                                    # then refresh the catalog
+WORK=/tmp/ampp-build binaries/build-php.sh 8.4 dist          # a minor resolves to its newest patch
+GH_TOKEN=$(gh auth token) python3 catalog/generate.py         # then refresh the catalog
 ```
 
 ## 🚢 Releases
@@ -202,7 +206,7 @@ Pushing a `v*` tag runs the **Release** workflow: it builds the installers for e
 ## 🗺️ Roadmap
 
 - [x] **Foundations**: monorepo, `ampp-core`, Tauri + React app, CI on all 3 platforms
-- [x] **Catalog and installer**: downloads with progress, SHA-256 verification, version manager
+- [x] **Catalog and installer**: downloads with progress, SHA-256 verification, version manager, remote catalog with patch updates
 - [x] **Services**: Apache + PHP (FastCGI) + MariaDB, health checks, live logs, clean shutdown
 - [x] **Our own binaries**: portable Apache, MariaDB and PHP (CLI + FPM) for macOS and Linux
 - [x] **Polish**: tray icon, `php.ini` and extensions editor, phpMyAdmin, Composer, `ampp` CLI, English/Spanish UI
