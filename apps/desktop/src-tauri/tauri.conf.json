@@ -41,6 +41,17 @@
     "license": "MIT",
     "publisher": "Open AMPP",
     "copyright": "© Open AMPP",
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "installer/nsis-header.bmp",
+        "sidebarImage": "installer/nsis-sidebar.bmp"
+      },
+      "wix": {
+        "bannerPath": "installer/wix-banner.bmp",
+        "dialogImagePath": "installer/wix-dialog.bmp"
+      }
+    },
     "macOS": {
       "minimumSystemVersion": "11.0"
     },
