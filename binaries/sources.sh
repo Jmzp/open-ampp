@@ -1,4 +1,4 @@
-# Versiones y SHA-256 de las fuentes, tomados de las publicaciones oficiales.
+# Source versions and SHA-256 checksums, taken from the official announcements.
 # shellcheck disable=SC2034
 
 HTTPD_VERSION=2.4.69
@@ -25,7 +25,7 @@ OPENSSL_VERSION=3.5.9
 OPENSSL_URL="https://github.com/openssl/openssl/releases/download/openssl-${OPENSSL_VERSION}/openssl-${OPENSSL_VERSION}.tar.gz"
 OPENSSL_SHA256=603f5602e2eef00d77fbd429d34dcd5822bb301757a1bc9cdb24c670f1eb859a
 
-# MariaDB: una entrada por versión LTS soportada.
+# MariaDB: one entry per supported LTS version.
 mariadb_sha256() {
   case "$1" in
     10.11.19) echo b8e543ee69d380fb1cfd563226f49e0fe96e4d67e7b7a9045ee514a168ed2066 ;;
@@ -35,3 +35,22 @@ mariadb_sha256() {
   esac
 }
 mariadb_url() { echo "https://archive.mariadb.org/mariadb-$1/source/mariadb-$1.tar.gz"; }
+
+# static-php-cli: builds PHP as a static binary (CLI + FPM) with the extensions below.
+SPC_VERSION=2.8.5
+spc_sha256() {
+  case "$1" in
+    linux-aarch64) echo 675a3840dcdc4ed041fe20eaa54310ce019a9984c1c03951df9ec66df5795213 ;;
+    linux-x86_64) echo 523ba4279c54c7a377156c0dd3a36adf92ee64b01e9a7f5e9e2ec084b8e458e5 ;;
+    macos-aarch64) echo acf2f25d56d0cbf8e65aa82e5054fef555f7be7c5c38046c6e0819f266d83225 ;;
+    macos-x86_64) echo e8b798048f62ca4960764196543b60ae703f7174aa418824cf542aeec1d2cd6a ;;
+    *) return 1 ;;
+  esac
+}
+spc_url() { echo "https://github.com/crazywhalecc/static-php-cli/releases/download/${SPC_VERSION}/spc-$1.tar.gz"; }
+
+# XAMPP's default set (bz2, curl, fileinfo, gettext, mbstring, exif, mysqli, pdo_mysql, pdo_sqlite,
+# openssl, ftp) plus what common frameworks and phpMyAdmin expect.
+PHP_EXTENSIONS="bcmath,bz2,calendar,ctype,curl,dom,exif,fileinfo,filter,ftp,gd,gettext,gmp,iconv,intl,mbregex,mbstring,mysqli,mysqlnd,opcache,openssl,pcntl,pdo,pdo_mysql,pdo_pgsql,pdo_sqlite,pgsql,phar,posix,readline,redis,session,simplexml,soap,sockets,sodium,sqlite3,tokenizer,xml,xmlreader,xmlwriter,xsl,zip,zlib"
+# Optional libraries that give GD JPEG, WebP and FreeType support.
+PHP_EXTRA_LIBS="libjpeg,libwebp,freetype"

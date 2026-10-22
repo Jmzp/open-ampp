@@ -1,4 +1,4 @@
-//! Arranca PHP real con el supervisor y le hace una petición FastCGI. Requiere red:
+//! Starts a real PHP through the supervisor and sends it a FastCGI request. Needs network:
 //! `cargo test -p ampp-core --test php_service -- --ignored`
 
 use std::io::{Read, Write};
@@ -8,7 +8,7 @@ use ampp_core::catalog::compare_versions;
 use ampp_core::{AppPaths, Manifest, Platform, State, Supervisor, Tool, installer, ports};
 
 #[tokio::test(flavor = "multi_thread")]
-#[ignore = "requiere red"]
+#[ignore = "needs network"]
 async fn php_fastcgi_serves_a_script() {
     let platform = Platform::current().expect("plataforma soportada");
     let manifest = Manifest::bundled();
@@ -17,7 +17,7 @@ async fn php_fastcgi_serves_a_script() {
         .into_iter()
         .filter(|p| p.tool == Tool::Php)
         .max_by(|a, b| compare_versions(&a.version, &b.version))
-        .expect("hay PHP en el catálogo");
+        .expect("the catalog has PHP");
 
     let tmp = tempfile::tempdir().unwrap();
     let paths = AppPaths::new(tmp.path());
@@ -25,7 +25,7 @@ async fn php_fastcgi_serves_a_script() {
     installer::install(&paths, pkg, |_| {}).await.unwrap();
 
     let mut state = State::default();
-    // Puerto base alto para no chocar con un PHP que el usuario tenga corriendo.
+    // High base port so it does not clash with a PHP the user may be running.
     state.ports.php_fcgi_base = 39000;
     state.mark_installed(Tool::Php, &pkg.version);
 
@@ -36,15 +36,15 @@ async fn php_fastcgi_serves_a_script() {
     let port = status.port.unwrap();
 
     let script = tmp.path().join("hello.php");
-    std::fs::write(&script, "<?php echo 'hola desde PHP ', PHP_VERSION;").unwrap();
+    std::fs::write(&script, "<?php echo 'hello from PHP ', PHP_VERSION;").unwrap();
     let body = fastcgi_get(port, &script.to_string_lossy());
-    assert!(body.contains(&format!("hola desde PHP {}", pkg.version)), "respuesta: {body}");
+    assert!(body.contains(&format!("hello from PHP {}", pkg.version)), "response: {body}");
 
     supervisor.stop(Tool::Php).await.unwrap();
-    assert!(ports::is_free(port), "el puerto debe liberarse al detener");
+    assert!(ports::is_free(port), "the port must be released on stop");
 }
 
-/// Cliente FastCGI mínimo: una petición GET y devuelve el STDOUT.
+/// Minimal FastCGI client: sends one GET request and returns STDOUT.
 fn fastcgi_get(port: u16, script: &str) -> String {
     fn record(kind: u8, content: &[u8]) -> Vec<u8> {
         let len = content.len() as u16;
@@ -64,7 +64,7 @@ fn fastcgi_get(port: u16, script: &str) -> String {
     param(&mut params, "REQUEST_METHOD", "GET");
     param(&mut params, "SERVER_PROTOCOL", "HTTP/1.1");
 
-    let mut req = record(1, &[0, 1, 0, 0, 0, 0, 0, 0]); // BEGIN_REQUEST, rol RESPONDER
+    let mut req = record(1, &[0, 1, 0, 0, 0, 0, 0, 0]); // BEGIN_REQUEST, RESPONDER role
     req.extend(record(4, &params));
     req.extend(record(4, &[]));
     req.extend(record(5, &[]));

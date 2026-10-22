@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api, TOOL_LABELS, type Tool } from "../lib/api";
+import { t } from "../lib/i18n";
 import { usePolling } from "../lib/usePolling";
 
 export function Logs() {
@@ -18,19 +19,19 @@ export function Logs() {
     <section className="logs">
       <div className="toolbar">
         <nav className="tabs">
-          {(Object.keys(TOOL_LABELS) as Tool[]).map((t) => (
-            <button key={t} className={t === tool ? "tab active" : "tab"} onClick={() => setTool(t)}>
-              {TOOL_LABELS[t]}
+          {(Object.keys(TOOL_LABELS) as Tool[]).map((name) => (
+            <button key={name} className={name === tool ? "tab active" : "tab"} onClick={() => setTool(name)}>
+              {TOOL_LABELS[name]}
             </button>
           ))}
         </nav>
         <label className="muted check">
           <input type="checkbox" checked={follow} onChange={(e) => setFollow(e.target.checked)} />
-          Seguir el final
+          {t.logs.follow}
         </label>
       </div>
       <pre ref={pre} className="log-view">
-        {text || "Sin registros todavía."}
+        {text || t.logs.empty}
       </pre>
     </section>
   );

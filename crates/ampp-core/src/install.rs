@@ -1,5 +1,5 @@
-//! Localiza los ejecutables de una versión instalada, ya sea gestionada por
-//! OPEN_AMPP (`bin/<tool>/<version>`) o del sistema (Homebrew en macOS).
+//! Locates the executables of an installed version, either managed by Open AMPP
+//! (`bin/<tool>/<version>`) or provided by the system (Homebrew on macOS).
 
 use std::path::{Path, PathBuf};
 
@@ -8,23 +8,23 @@ use serde::Serialize;
 use crate::error::{Error, Result};
 use crate::paths::{AppPaths, Tool};
 
-/// Identificador de versión para las instalaciones de Homebrew.
+/// Version id used for Homebrew installs.
 pub const HOMEBREW: &str = "homebrew";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Installation {
     pub tool: Tool,
-    /// Identificador guardado en el estado (`8.3.12` o `homebrew`).
+    /// Id stored in the state (`8.3.12` or `homebrew`).
     pub id: String,
-    /// Versión real del software.
+    /// Actual software version.
     pub version: String,
-    /// Raíz de la instalación (prefix).
+    /// Installation root (prefix).
     pub root: PathBuf,
     pub system: bool,
 }
 
 impl Installation {
-    /// `major.minor`, p. ej. `11.4`.
+    /// `major.minor`, e.g. `11.4`.
     pub fn minor_version(&self) -> String {
         self.version.split('.').take(2).collect::<Vec<_>>().join(".")
     }
@@ -37,13 +37,18 @@ impl Installation {
         first_existing(&[self.root.join("modules"), self.root.join("lib/httpd/modules")])
     }
 
-    /// `php-fpm` en Unix, `php-cgi.exe` en Windows.
+    /// `php-fpm` on Unix, `php-cgi.exe` on Windows.
     pub fn php_fastcgi(&self) -> Option<PathBuf> {
         if cfg!(windows) {
             first_existing(&[self.root.join("php-cgi.exe")])
         } else {
             first_existing(&[self.root.join("php-fpm"), self.root.join("sbin/php-fpm")])
         }
+    }
+
+    /// Command-line interpreter (`php`).
+    pub fn php_cli(&self) -> Option<PathBuf> {
+        first_existing(&[self.root.join(exe("php")), self.root.join("bin/php")])
     }
 
     pub fn php_extension_dir(&self) -> Option<PathBuf> {
@@ -64,9 +69,14 @@ impl Installation {
     pub fn mariadb_admin(&self) -> Option<PathBuf> {
         first_existing(&[self.root.join("bin").join(exe("mariadb-admin"))])
     }
+
+    /// Command-line client (`mariadb`).
+    pub fn mariadb_client(&self) -> Option<PathBuf> {
+        first_existing(&[self.root.join("bin").join(exe("mariadb"))])
+    }
 }
 
-/// Resuelve la instalación de `tool` con identificador `id`.
+/// Resolves the installation of `tool` with id `id`.
 pub fn locate(paths: &AppPaths, tool: Tool, id: &str) -> Result<Installation> {
     let not_installed = || Error::NotInstalled { tool, version: id.to_string() };
     if id == HOMEBREW {
@@ -76,14 +86,14 @@ pub fn locate(paths: &AppPaths, tool: Tool, id: &str) -> Result<Installation> {
     if !root.is_dir() {
         return Err(not_installed());
     }
-    // El zip de Apache Lounge trae `Apache24/` junto a archivos sueltos (ReadMe, etc.).
+    // The Apache Lounge zip has `Apache24/` next to loose files (ReadMe, etc.).
     if tool == Tool::Apache && root.join("Apache24").is_dir() {
         root = root.join("Apache24");
     }
     Ok(Installation { tool, id: id.to_string(), version: id.to_string(), root, system: false })
 }
 
-/// Detecta la fórmula de Homebrew correspondiente (solo macOS).
+/// Detects the matching Homebrew formula (macOS only).
 pub fn homebrew(tool: Tool) -> Option<Installation> {
     if !cfg!(target_os = "macos") {
         return None;
@@ -95,7 +105,7 @@ pub fn homebrew(tool: Tool) -> Option<Installation> {
     };
     ["/opt/homebrew/opt", "/usr/local/opt"].iter().find_map(|base| {
         let link = Path::new(base).join(formula);
-        // `opt/<formula>` es un symlink a `Cellar/<formula>/<versión>`.
+        // `opt/<formula>` is a symlink to `Cellar/<formula>/<version>`.
         let version = std::fs::read_link(&link).ok()?.file_name()?.to_string_lossy().into_owned();
         let inst = Installation { tool, id: HOMEBREW.into(), version, root: link, system: true };
         let usable = match tool {
@@ -107,7 +117,7 @@ pub fn homebrew(tool: Tool) -> Option<Installation> {
     })
 }
 
-/// Añade la extensión `.exe` en Windows.
+/// Appends `.exe` on Windows.
 pub fn exe(name: &str) -> String {
     if cfg!(windows) { format!("{name}.exe") } else { name.to_string() }
 }

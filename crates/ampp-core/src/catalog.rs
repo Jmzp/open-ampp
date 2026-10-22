@@ -1,14 +1,19 @@
-//! Catálogo de versiones descargables (`manifest.json`).
+//! Catalog of downloadable versions (`manifest.json`).
 
 use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 use crate::paths::Tool;
+use crate::tools::Extra;
 
-/// Versión del esquema del manifiesto que entiende esta build.
+/// Manifest schema version this build understands.
 pub const SCHEMA_VERSION: u32 = 1;
 
-/// Catálogo incluido en la app; se usa si no hay red o como punto de partida.
+/// Published catalog: updated whenever new builds or security releases land, without waiting
+/// for a new app release.
+pub const CATALOG_URL: &str = "https://raw.githubusercontent.com/Jmzp/open-ampp/main/catalog/manifest.json";
+
+/// Catalog bundled with the app, used offline.
 pub const BUNDLED_MANIFEST: &str = include_str!("../../../catalog/manifest.json");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -33,7 +38,7 @@ pub struct Platform {
 }
 
 impl Platform {
-    /// Plataforma en la que corre el proceso, si está soportada.
+    /// Platform the process runs on, if supported.
     pub fn current() -> Option<Self> {
         let os = match std::env::consts::OS {
             "windows" => Os::Windows,
@@ -63,12 +68,26 @@ pub struct Package {
     pub version: String,
     pub os: Os,
     pub arch: Arch,
-    /// URL `https://` o `file://` (útil para catálogos locales y tests).
+    /// `https://` or `file://` URL (handy for local catalogs and tests).
     pub url: String,
-    /// SHA-256 en hexadecimal.
+    /// SHA-256 in hex.
     pub sha256: String,
     pub archive: ArchiveKind,
-    /// Tamaño en bytes, informativo para la UI.
+    /// Size in bytes, informational for the UI.
+    #[serde(default)]
+    pub size: Option<u64>,
+}
+
+/// Platform-independent helper tool (phpMyAdmin, Composer): a single file or an archive.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ExtraFile {
+    pub name: Extra,
+    pub version: String,
+    pub url: String,
+    pub sha256: String,
+    /// Set when the download is an archive to extract (phpMyAdmin); `None` for a single file.
+    #[serde(default)]
+    pub archive: Option<ArchiveKind>,
     #[serde(default)]
     pub size: Option<u64>,
 }
@@ -77,25 +96,49 @@ pub struct Package {
 pub struct Manifest {
     pub schema: u32,
     pub packages: Vec<Package>,
+    #[serde(default)]
+    pub extras: Vec<ExtraFile>,
 }
 
 impl Manifest {
     pub fn parse(json: &str) -> Result<Self> {
         let manifest: Self = serde_json::from_str(json).map_err(|e| Error::Catalog(e.to_string()))?;
         if manifest.schema != SCHEMA_VERSION {
-            return Err(Error::Catalog(format!(
-                "esquema {} no soportado (se esperaba {SCHEMA_VERSION})",
-                manifest.schema
+            let schema = manifest.schema;
+            return Err(Error::Catalog(tr!(
+                "esquema {schema} no soportado (se esperaba {SCHEMA_VERSION})",
+                "unsupported schema {schema} (expected {SCHEMA_VERSION})"
             )));
         }
         Ok(manifest)
     }
 
     pub fn bundled() -> Self {
-        Self::parse(BUNDLED_MANIFEST).expect("el catálogo incluido debe ser válido")
+        Self::parse(BUNDLED_MANIFEST).expect("the bundled catalog must be valid")
     }
 
-    /// Descarga el catálogo remoto.
+    /// The published catalog if it answers within a few seconds, otherwise the bundled one.
+    pub async fn latest() -> Self {
+        match tokio::time::timeout(std::time::Duration::from_secs(5), Self::fetch(CATALOG_URL)).await {
+            Ok(Ok(manifest)) => manifest,
+            _ => Self::bundled(),
+        }
+    }
+
+    /// A newer patch release in the same minor series as `version` (8.4.23 → 8.4.27), if any.
+    pub fn patch_update(&self, tool: Tool, version: &str, platform: Platform) -> Option<&Package> {
+        let minor = |v: &str| v.split('.').take(2).collect::<Vec<_>>().join(".");
+        if !version.chars().next().is_some_and(|c| c.is_ascii_digit()) {
+            return None; // e.g. "homebrew"
+        }
+        self.for_platform(platform)
+            .into_iter()
+            .filter(|p| p.tool == tool && minor(&p.version) == minor(version))
+            .filter(|p| compare_versions(&p.version, version).is_gt())
+            .max_by(|a, b| compare_versions(&a.version, &b.version))
+    }
+
+    /// Downloads a remote catalog.
     pub async fn fetch(url: &str) -> Result<Self> {
         let http = |source| Error::Http { url: url.to_string(), source };
         let body = reqwest::get(url)
@@ -108,7 +151,7 @@ impl Manifest {
         Self::parse(&body)
     }
 
-    /// Paquetes de la plataforma, ordenados por herramienta y versión descendente.
+    /// Packages for the platform, sorted by tool and descending version.
     pub fn for_platform(&self, platform: Platform) -> Vec<&Package> {
         let mut pkgs: Vec<_> = self
             .packages
@@ -119,6 +162,10 @@ impl Manifest {
         pkgs
     }
 
+    pub fn extra(&self, name: Extra) -> Option<&ExtraFile> {
+        self.extras.iter().find(|e| e.name == name)
+    }
+
     pub fn find(&self, tool: Tool, version: &str, platform: Platform) -> Result<&Package> {
         self.packages
             .iter()
@@ -127,7 +174,7 @@ impl Manifest {
     }
 }
 
-/// Compara versiones tipo `8.3.12` numéricamente por componentes.
+/// Compares `8.3.12`-style versions numerically, component by component.
 pub fn compare_versions(a: &str, b: &str) -> std::cmp::Ordering {
     let parts = |v: &str| v.split('.').map(|p| p.parse::<u64>().unwrap_or(0)).collect::<Vec<_>>();
     parts(a).cmp(&parts(b))
@@ -174,9 +221,28 @@ mod tests {
                 pkg(Tool::Php, "8.4.0", Os::Windows),
                 pkg(Tool::Apache, "2.4.62", Os::Linux),
             ],
+            extras: Vec::new(),
         };
         let versions: Vec<_> = m.for_platform(LINUX_X64).iter().map(|p| p.version.as_str()).collect();
         assert_eq!(versions, ["2.4.62", "8.10.0", "8.3.12", "8.1.30"]);
         assert!(m.find(Tool::Php, "8.4.0", LINUX_X64).is_err());
+    }
+
+    #[test]
+    fn patch_updates_stay_in_the_same_minor() {
+        let m = Manifest {
+            schema: 1,
+            packages: vec![
+                pkg(Tool::Php, "8.3.10", Os::Linux),
+                pkg(Tool::Php, "8.3.12", Os::Linux),
+                pkg(Tool::Php, "8.4.1", Os::Linux),
+            ],
+            extras: Vec::new(),
+        };
+        let update = |v| m.patch_update(Tool::Php, v, LINUX_X64).map(|p| p.version.clone());
+        assert_eq!(update("8.3.9").as_deref(), Some("8.3.12"));
+        assert_eq!(update("8.3.12"), None);
+        assert_eq!(update("8.4.1"), None);
+        assert_eq!(update("homebrew"), None);
     }
 }

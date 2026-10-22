@@ -1,13 +1,16 @@
-name: Binarios
+name: Binaries
 
-# Compila Apache y MariaDB portables y re-empaqueta PHP para macOS y Linux (x64 y arm64),
-# y los publica como releases `bin-<herramienta>-<versión>`. Después hay que regenerar
-# el catálogo: `python3 catalog/generate.py`.
+# Builds portable Apache, MariaDB and PHP (CLI + FPM) for macOS and Linux (x64 and arm64),
+# publishes them as `bin-<tool>-<version>` releases and refreshes catalog/manifest.json on main.
+# The daily run only looks for new PHP patch releases (security fixes) and builds what is missing;
+# installed apps pick up the refreshed catalog and offer the update.
 on:
+  schedule:
+    - cron: "0 6 * * *"
   workflow_dispatch:
     inputs:
       what:
-        description: "Qué compilar"
+        description: "What to build"
         type: choice
         options: [all, apache, mariadb, php]
         default: all
@@ -24,17 +27,17 @@ jobs:
         include:
           - { runner: macos-15, container: "" }
           - { runner: macos-15-intel, container: "" }
-          # AlmaLinux 8 (glibc 2.28) para que los binarios funcionen en distros no tan recientes.
+          # AlmaLinux 8 (glibc 2.28) so the binaries also run on older distros.
           - { runner: ubuntu-24.04, container: "almalinux:8" }
           - { runner: ubuntu-24.04-arm, container: "almalinux:8" }
     runs-on: ${{ matrix.runner }}
     container: ${{ matrix.container }}
     steps:
       - uses: actions/checkout@v4
-      - name: Dependencias (Linux)
+      - name: Dependencies (Linux)
         if: runner.os == 'Linux'
         run: binaries/linux-deps.sh
-      - name: Compilar
+      - name: Build
         run: WORK="$RUNNER_TEMP/work" binaries/build-apache.sh dist
       - uses: actions/upload-artifact@v4
         with:
@@ -57,15 +60,15 @@ jobs:
     timeout-minutes: 180
     steps:
       - uses: actions/checkout@v4
-      - name: Dependencias (Linux)
+      - name: Dependencies (Linux)
         if: runner.os == 'Linux'
         run: binaries/linux-deps.sh
-      - name: Dependencias (macOS)
+      - name: Dependencies (macOS)
         if: runner.os == 'macOS'
         run: |
           brew install cmake bison
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
-      - name: Compilar
+      - name: Build
         run: WORK="$RUNNER_TEMP/work" binaries/build-mariadb.sh "${{ matrix.version }}" dist
       - uses: actions/upload-artifact@v4
         with:
@@ -73,29 +76,34 @@ jobs:
           path: dist/*.tar.gz
 
   php:
-    if: inputs.what == 'all' || inputs.what == 'php'
-    runs-on: ubuntu-24.04
+    if: github.event_name == 'schedule' || inputs.what == 'all' || inputs.what == 'php'
     strategy:
       fail-fast: false
       matrix:
-        version: ["8.2.32", "8.3.32", "8.4.23"]
+        # Each minor resolves to its latest patch release at build time (see build-php.sh).
+        version: ["8.2", "8.3", "8.4"]
+        # static-php-cli links Linux builds statically against musl, so no old-glibc container is needed.
+        runner: [macos-15, macos-15-intel, ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v4
-      - name: Re-empaquetar
-        run: |
-          for os in macos linux; do
-            for arch in x64 arm64; do
-              WORK="$RUNNER_TEMP/work" binaries/repack-php.sh "${{ matrix.version }}" dist "$os" "$arch"
-            done
-          done
+      - name: Build
+        env:
+          # Avoids GitHub API rate limits while static-php-cli downloads sources.
+          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
+          SKIP_EXISTING: "1"
+        run: WORK="$RUNNER_TEMP/work" binaries/build-php.sh "${{ matrix.version }}" dist
       - uses: actions/upload-artifact@v4
         with:
-          name: php-${{ matrix.version }}
+          name: php-${{ matrix.version }}-${{ matrix.runner }}
           path: dist/*.tar.gz
+          if-no-files-found: ignore
 
   publish:
     needs: [apache, mariadb, php]
-    # Publica lo que se haya compilado aunque algún job se haya omitido o fallado.
+    # Publish whatever was built, even if some job was skipped or failed.
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     steps:
@@ -104,7 +112,20 @@ jobs:
         with:
           path: dist
           merge-multiple: true
-      - name: Publicar releases
+      - name: Publish releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: binaries/publish.sh dist
+      - name: Refresh the catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 catalog/generate.py
+          if git diff --quiet catalog/manifest.json; then
+            echo "catalog unchanged"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git commit -am "Catalog: refresh published binaries"
+            git push
+          fi

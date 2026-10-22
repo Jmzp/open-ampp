@@ -1,29 +1,29 @@
 #!/usr/bin/env bash
-# Compila Apache httpd portable (relocalizable) para macOS o Linux.
-# Uso: WORK=/tmp/build ./build-apache.sh <directorio-de-salida>
-# Produce: <salida>/apache-<versión>-<os>-<arch>.tar.gz
+# Builds a portable (relocatable) Apache httpd for macOS or Linux.
+# Usage: WORK=/tmp/build ./build-apache.sh <output-dir>
+# Produces: <output>/apache-<version>-<os>-<arch>.tar.gz
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
-OUT=$(mkdir -p "${1:?uso: build-apache.sh <salida>}" && cd "$1" && pwd)
+OUT=$(mkdir -p "${1:?usage: build-apache.sh <output>}" && cd "$1" && pwd)
 WORK=${WORK:-$PWD/build-work}
 mkdir -p "$WORK" && WORK=$(cd "$WORK" && pwd)
 source "$HERE/sources.sh"
 source "$HERE/lib.sh"
 
 SRC="$WORK/src"
-DEPS="$WORK/deps-apache"     # dependencias estáticas, no se empaquetan
+DEPS="$WORK/deps-apache"     # static dependencies, not packaged
 PREFIX="$WORK/apache-$HTTPD_VERSION"
 rm -rf "$DEPS" "$PREFIX"
 mkdir -p "$SRC" "$DEPS"
 
 build_openssl "$DEPS"
 
-log "PCRE2 $PCRE2_VERSION (estática)"
+log "PCRE2 $PCRE2_VERSION (static)"
 dir=$(fetch "$PCRE2_URL" "$PCRE2_SHA256" "$SRC")
 (cd "$dir" && ./configure --prefix="$DEPS" --disable-shared --enable-static --with-pic >/dev/null \
   && make -j"$JOBS" >/dev/null && make install >/dev/null)
 
-log "expat $EXPAT_VERSION (estática)"
+log "expat $EXPAT_VERSION (static)"
 dir=$(fetch "$EXPAT_URL" "$EXPAT_SHA256" "$SRC")
 (cd "$dir" && ./configure --prefix="$DEPS" --disable-shared --enable-static --with-pic \
   --without-docbook --without-examples --without-tests >/dev/null \
@@ -41,10 +41,10 @@ extra_libs=""
 [ "$OS" = linux ] && extra_libs="-ldl -pthread"
 (
   cd "$httpd"
-  # pkg-config solo ve nuestras dependencias: así no se cuelan librerías de Homebrew u otras del sistema.
+  # pkg-config only sees our dependencies, so no Homebrew or other system libraries sneak in.
   export PKG_CONFIG_PATH="" PKG_CONFIG_LIBDIR="$DEPS/lib/pkgconfig"
-  # Módulos que requieren librerías externas (brotli, nghttp2, lua, curl/jansson) y no aportan en local.
-  # Igual los drivers DBD/LDAP de APR-util: los detectaría desde Homebrew (p. ej. unixodbc en /usr/local).
+  # Modules that need external libraries (brotli, nghttp2, lua, curl/jansson) and add nothing locally.
+  # Same for APR-util's DBD/LDAP drivers, which would pick them up from Homebrew (e.g. unixodbc in /usr/local).
   CFLAGS="-O2 -fPIC" LIBS="$extra_libs" ./configure \
     --disable-brotli --disable-http2 --disable-proxy-http2 --disable-lua --disable-md \
     --without-odbc --without-pgsql --without-mysql --without-sqlite2 --without-sqlite3 \
@@ -63,7 +63,7 @@ extra_libs=""
   make install >/dev/null
 )
 
-log "limpiando y relocalizando"
+log "cleaning up and relocating"
 rm -rf "$PREFIX"/{manual,man,build,include,cgi-bin,htdocs}
 rm -f "$PREFIX"/lib/*.a "$PREFIX"/lib/*.la "$PREFIX"/lib/*.exp
 rm -rf "$PREFIX"/lib/pkgconfig

@@ -9,6 +9,7 @@ import {
   type ServiceStatus,
   type Tool,
 } from "../lib/api";
+import { t } from "../lib/i18n";
 import { usePolling } from "../lib/usePolling";
 
 const TOOLS = Object.keys(TOOL_LABELS) as Tool[];
@@ -48,13 +49,16 @@ export function Dashboard({ state, onManage }: { state: AppState; onManage: () =
     <>
       <div className="toolbar">
         <button disabled={busy.has("all")} onClick={() => run("all", api.startAll)}>
-          Iniciar todo
+          {t.dashboard.startAll}
         </button>
         <button className="secondary" disabled={!anyRunning || busy.has("all")} onClick={() => run("all", api.stopAll)}>
-          Detener todo
+          {t.dashboard.stopAll}
         </button>
         <button className="ghost" disabled={!apacheUp} onClick={() => openUrl(siteUrl)}>
-          Abrir {siteUrl.replace("http://", "")} ↗
+          {t.dashboard.open(siteUrl.replace("http://", ""))}
+        </button>
+        <button className="ghost" onClick={() => api.openLocation("www")}>
+          {t.dashboard.wwwFolder}
         </button>
       </div>
 
@@ -75,38 +79,44 @@ export function Dashboard({ state, onManage }: { state: AppState; onManage: () =
               <div className="card-head">
                 <span
                   className={`dot ${running ? "running" : s?.error ? "failed" : "stopped"}`}
-                  aria-label={running ? "en ejecución" : "detenido"}
+                  aria-label={running ? t.dashboard.running : t.dashboard.stopped}
                 />
                 <h2>{TOOL_LABELS[tool]}</h2>
                 <span className="muted state-label">
-                  {isBusy ? "Trabajando…" : running ? "En ejecución" : "Detenido"}
+                  {isBusy
+                    ? t.dashboard.working
+                    : running
+                      ? s?.external
+                        ? t.dashboard.runningTerminal
+                        : t.dashboard.running
+                      : t.dashboard.stopped}
                 </span>
               </div>
               <dl>
-                <dt>Versión</dt>
-                <dd>{running ? s?.version : active ? versionLabel(active) : "No instalada"}</dd>
-                <dt>Puerto</dt>
+                <dt>{t.dashboard.version}</dt>
+                <dd>{running ? s?.version : active ? versionLabel(active) : t.dashboard.notInstalled}</dd>
+                <dt>{t.dashboard.port}</dt>
                 <dd>{s?.port ?? "—"}</dd>
-                <dt>PID</dt>
+                <dt>{t.dashboard.pid}</dt>
                 <dd>{s?.pid ?? "—"}</dd>
               </dl>
               {s?.error && !running && <p className="error small">{s.error.split("\n")[0]}</p>}
               {!active ? (
                 <button className="secondary" onClick={onManage}>
-                  Instalar una versión
+                  {t.dashboard.installVersion}
                 </button>
               ) : running ? (
                 <div className="actions">
                   <button className="secondary" disabled={isBusy} onClick={() => run(tool, () => api.restartService(tool))}>
-                    Reiniciar
+                    {t.dashboard.restart}
                   </button>
                   <button disabled={isBusy} onClick={() => run(tool, () => api.stopService(tool))}>
-                    Detener
+                    {t.dashboard.stop}
                   </button>
                 </div>
               ) : (
                 <button disabled={isBusy} onClick={() => run(tool, () => api.startService(tool))}>
-                  Iniciar
+                  {t.dashboard.start}
                 </button>
               )}
             </article>

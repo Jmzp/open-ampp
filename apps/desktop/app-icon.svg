@@ -22,7 +22,7 @@
     </filter>
   </defs>
 
-  <!-- Fondo tipo squircle con margen para el estilo de macOS -->
+  <!-- Squircle background with the margin macOS icons expect -->
   <rect x="100" y="100" width="824" height="824" rx="190" fill="url(#bg)"/>
   <rect x="100" y="100" width="824" height="824" rx="190" fill="url(#glow)"/>
   <rect x="101.5" y="101.5" width="821" height="821" rx="188.5" fill="none" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="3"/>
@@ -34,7 +34,7 @@
     <rect x="242" y="614" width="540" height="128" rx="40" fill="url(#bar)" opacity="0.88"/>
   </g>
 
-  <!-- Luces de estado -->
+  <!-- Status lights -->
   <g filter="url(#led)">
     <circle cx="318" cy="346" r="24" fill="#F97316"/>
     <circle cx="318" cy="512" r="24" fill="#6366F1"/>

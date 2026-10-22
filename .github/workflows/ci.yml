@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Dependencias de sistema (Linux)
+      - name: System dependencies (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
@@ -30,7 +30,7 @@ jobs:
           cache: npm
           cache-dependency-path: apps/desktop/package-lock.json
 
-      - name: Tests de ampp-core
+      - name: ampp-core tests
         run: cargo test -p ampp-core
 
       - name: Build frontend
@@ -39,5 +39,5 @@ jobs:
           npm ci
           npm run build
 
-      - name: Check app Tauri
+      - name: Check the Tauri app
         run: cargo check -p open-ampp

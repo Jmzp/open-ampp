@@ -1,12 +1,12 @@
 use std::net::TcpListener;
 use std::time::Duration;
 
-/// `true` si nadie escucha en `127.0.0.1:port`.
+/// `true` if nothing listens on `127.0.0.1:port`.
 pub fn is_free(port: u16) -> bool {
     TcpListener::bind(("127.0.0.1", port)).is_ok()
 }
 
-/// `true` si algo acepta conexiones en `127.0.0.1:port`.
+/// `true` if something accepts connections on `127.0.0.1:port`.
 pub async fn is_open(port: u16) -> bool {
     matches!(
         tokio::time::timeout(Duration::from_millis(300), tokio::net::TcpStream::connect(("127.0.0.1", port))).await,
@@ -14,7 +14,7 @@ pub async fn is_open(port: u16) -> bool {
     )
 }
 
-/// Puerto FastCGI de una versión de PHP: `base + major*10 + minor` (8.3 → 9083).
+/// FastCGI port of a PHP version: `base + major*10 + minor` (8.3 → 9083).
 pub fn php_fcgi_port(base: u16, php_version: &str) -> u16 {
     let mut parts = php_version.split('.').map(|p| p.parse::<u16>().unwrap_or(0));
     let (major, minor) = (parts.next().unwrap_or(0), parts.next().unwrap_or(0));

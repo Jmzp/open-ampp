@@ -326,7 +326,7 @@
       "version": "8.2.35",
       "os": "windows",
       "arch": "x64",
-      "url": "https://windows.php.net/downloads/releases/php-8.2.35-nts-Win32-vs16-x64.zip",
+      "url": "https://downloads.php.net/~windows/releases/php-8.2.35-nts-Win32-vs16-x64.zip",
       "sha256": "798ffa4b9ce22a820d57048e9695df7245bf917ed067917f256942a10918a8cc",
       "archive": "zip",
       "size": null
@@ -336,7 +336,7 @@
       "version": "8.3.36",
       "os": "windows",
       "arch": "x64",
-      "url": "https://windows.php.net/downloads/releases/php-8.3.36-nts-Win32-vs16-x64.zip",
+      "url": "https://downloads.php.net/~windows/releases/php-8.3.36-nts-Win32-vs16-x64.zip",
       "sha256": "3c9242622c7402b47c38d2ec2ed779cef3a290fd6f2bde6c35f9c482699e7900",
       "archive": "zip",
       "size": null
@@ -346,9 +346,26 @@
       "version": "8.4.27",
       "os": "windows",
       "arch": "x64",
-      "url": "https://windows.php.net/downloads/releases/php-8.4.27-nts-Win32-vs17-x64.zip",
+      "url": "https://downloads.php.net/~windows/releases/php-8.4.27-nts-Win32-vs17-x64.zip",
       "sha256": "93bd8a815a52156606fb906d0573437908c61f96e2cc52c03a51e36a41bf5236",
       "archive": "zip",
+      "size": null
+    }
+  ],
+  "extras": [
+    {
+      "name": "phpmyadmin",
+      "version": "5.2.3",
+      "url": "https://files.phpmyadmin.net/phpMyAdmin/5.2.3/phpMyAdmin-5.2.3-all-languages.zip",
+      "sha256": "2d2e13c735366d318425c78e4ee2cc8fc648d77faba3ddea2cd516e43885733f",
+      "archive": "zip",
+      "size": null
+    },
+    {
+      "name": "composer",
+      "version": "2.10.3",
+      "url": "https://getcomposer.org/download/2.10.3/composer.phar",
+      "sha256": "7a2d379d5b8ffdaa028580ef26494c36d2feef4b178d3dd1473a4dbc5e17c8d6",
       "size": null
     }
   ]

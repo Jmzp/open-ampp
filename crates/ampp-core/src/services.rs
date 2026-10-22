@@ -1,4 +1,4 @@
-//! Arranque, parada y supervisión de Apache, PHP (FastCGI) y MariaDB.
+//! Starting, stopping and supervising Apache, PHP (FastCGI) and MariaDB.
 
 use std::collections::HashMap;
 use std::fs;
@@ -16,10 +16,11 @@ use crate::install::{self, Installation};
 use crate::paths::{AppPaths, Tool};
 use crate::ports;
 use crate::state::State;
+use crate::tools;
 
 const START_TIMEOUT: Duration = Duration::from_secs(20);
 const STOP_TIMEOUT: Duration = Duration::from_secs(10);
-/// Bytes finales del log que se incluyen en el mensaje cuando un servicio falla.
+/// Trailing log bytes included in the message when a service fails.
 const LOG_TAIL_ON_ERROR: u64 = 1500;
 
 #[derive(Debug, Clone, Serialize)]
@@ -27,11 +28,39 @@ pub struct ServiceStatus {
     pub tool: Tool,
     pub running: bool,
     pub pid: Option<u32>,
-    /// Versión real en ejecución.
+    /// Actual running version.
     pub version: Option<String>,
     pub port: Option<u16>,
-    /// Último error (arranque fallido o caída inesperada).
+    /// Last error (failed start or unexpected exit).
     pub error: Option<String>,
+    /// Launched by another Open AMPP process (e.g. `ampp up` in a terminal).
+    pub external: bool,
+}
+
+/// Contents of `run/<tool>.pid`: the service, who launched it, and with which version and port.
+#[derive(Debug, Clone, PartialEq)]
+struct PidRecord {
+    pid: u32,
+    port: u16,
+    id: String,
+    /// Open AMPP process (app or CLI) that launched it.
+    owner: u32,
+}
+
+impl PidRecord {
+    fn parse(text: &str) -> Option<Self> {
+        let mut lines = text.lines().map(str::trim);
+        Some(Self {
+            pid: lines.next()?.parse().ok()?,
+            port: lines.next()?.parse().ok()?,
+            id: lines.next()?.to_string(),
+            owner: lines.next()?.parse().ok()?,
+        })
+    }
+
+    fn render(&self) -> String {
+        format!("{}\n{}\n{}\n{}\n", self.pid, self.port, self.id, self.owner)
+    }
 }
 
 struct Running {
@@ -40,7 +69,7 @@ struct Running {
     port: u16,
 }
 
-/// Lo necesario para lanzar un servicio ya configurado.
+/// Everything needed to launch an already configured service.
 struct Launch {
     program: PathBuf,
     args: Vec<String>,
@@ -63,7 +92,7 @@ impl Supervisor {
         self.paths.logs().join(format!("{}.log", tool.as_str()))
     }
 
-    /// Estado de los tres servicios. Detecta procesos que terminaron por su cuenta.
+    /// Status of the three services. Detects processes that exited on their own.
     pub async fn status(&self) -> Vec<ServiceStatus> {
         let mut procs = self.procs.lock().await;
         let mut errors = self.errors.lock().await;
@@ -72,7 +101,7 @@ impl Supervisor {
             .iter_mut()
             .filter_map(|(tool, r)| r.child.try_wait().ok().flatten().map(|code| (*tool, code)))
             .map(|(tool, code)| {
-                errors.insert(tool, format!("el proceso terminó inesperadamente ({code})"));
+                errors.insert(tool, tr!("el proceso terminó inesperadamente ({code})", "the process exited unexpectedly ({code})"));
                 tool
             })
             .collect();
@@ -91,21 +120,34 @@ impl Supervisor {
                     version: Some(r.inst.version.clone()),
                     port: Some(r.port),
                     error: None,
+                    external: false,
                 },
-                None => ServiceStatus {
-                    tool,
-                    running: false,
-                    pid: None,
-                    version: None,
-                    port: None,
-                    error: errors.get(&tool).cloned(),
+                None => match self.external(tool) {
+                    Some(rec) => ServiceStatus {
+                        tool,
+                        running: true,
+                        pid: Some(rec.pid),
+                        version: Some(rec.id),
+                        port: Some(rec.port),
+                        error: None,
+                        external: true,
+                    },
+                    None => ServiceStatus {
+                        tool,
+                        running: false,
+                        pid: None,
+                        version: None,
+                        port: None,
+                        error: errors.get(&tool).cloned(),
+                        external: false,
+                    },
                 },
             })
             .collect()
     }
 
     pub async fn start(&self, tool: Tool, state: &State) -> Result<()> {
-        if self.procs.lock().await.contains_key(&tool) {
+        if self.procs.lock().await.contains_key(&tool) || self.external(tool).is_some() {
             return Ok(());
         }
         self.errors.lock().await.remove(&tool);
@@ -119,6 +161,7 @@ impl Supervisor {
     async fn start_inner(&self, tool: Tool, state: &State) -> Result<()> {
         let id = state.active.get(&tool).ok_or(Error::NoActiveVersion(tool))?;
         let inst = install::locate(&self.paths, tool, id)?;
+        check_runtime(tool)?;
         let launch = self.prepare(&inst, state).await?;
 
         if !ports::is_free(launch.port) {
@@ -128,18 +171,22 @@ impl Supervisor {
         let log_path = self.log_file(tool);
         let mut child = spawn(&launch, &log_path)?;
         if let Some(pid) = child.id() {
+            let record = PidRecord { pid, port: launch.port, id: inst.id.clone(), owner: std::process::id() };
             let pid_file = self.pid_file(tool);
-            fs::write(&pid_file, pid.to_string()).at(&pid_file)?;
+            fs::write(&pid_file, record.render()).at(&pid_file)?;
         }
 
-        // Espera a que el puerto acepte conexiones o a que el proceso muera.
+        // Wait until the port accepts connections or the process dies.
         let deadline = tokio::time::Instant::now() + START_TIMEOUT;
         loop {
             if let Some(code) = child.try_wait().at(&launch.program)? {
                 let _ = fs::remove_file(self.pid_file(tool));
                 return Err(Error::ServiceFailed {
                     tool,
-                    reason: format!("terminó con {code}.\n{}", tail(&log_path, LOG_TAIL_ON_ERROR)),
+                    reason: {
+                        let log = tail(&log_path, LOG_TAIL_ON_ERROR);
+                        tr!("terminó con {code}.\n{log}", "exited with {code}.\n{log}")
+                    },
                 });
             }
             if ports::is_open(launch.port).await {
@@ -150,12 +197,14 @@ impl Supervisor {
                 let _ = fs::remove_file(self.pid_file(tool));
                 return Err(Error::ServiceFailed {
                     tool,
-                    reason: format!(
-                        "no respondió en el puerto {} tras {}s.\n{}",
-                        launch.port,
-                        START_TIMEOUT.as_secs(),
-                        tail(&log_path, LOG_TAIL_ON_ERROR)
-                    ),
+                    reason: {
+                        let (port, secs) = (launch.port, START_TIMEOUT.as_secs());
+                        let log = tail(&log_path, LOG_TAIL_ON_ERROR);
+                        tr!(
+                            "no respondió en el puerto {port} tras {secs}s.\n{log}",
+                            "did not answer on port {port} after {secs}s.\n{log}"
+                        )
+                    },
                 });
             }
             tokio::time::sleep(Duration::from_millis(250)).await;
@@ -167,6 +216,9 @@ impl Supervisor {
 
     pub async fn stop(&self, tool: Tool) -> Result<()> {
         let Some(mut running) = self.procs.lock().await.remove(&tool) else {
+            if let Some(rec) = self.external(tool) {
+                self.stop_external(tool, &rec).await;
+            }
             return Ok(());
         };
         let graceful =
@@ -177,7 +229,7 @@ impl Supervisor {
         Ok(())
     }
 
-    /// Arranca en orden de dependencias: PHP y MariaDB antes que Apache.
+    /// Starts in dependency order: PHP and MariaDB before Apache.
     pub async fn start_all(&self, state: &State) -> Vec<(Tool, Error)> {
         let mut failures = Vec::new();
         for tool in [Tool::Php, Tool::Mariadb, Tool::Apache] {
@@ -196,37 +248,84 @@ impl Supervisor {
         }
     }
 
-    /// Mata procesos que quedaron vivos de una sesión anterior (p. ej. si la app se cerró de golpe).
-    /// Solo actúa si el PID sigue apuntando a un ejecutable del servicio esperado.
-    pub fn cleanup_orphans(&self) {
-        use sysinfo::{Pid, ProcessesToUpdate, System};
+    /// Stops only the services launched by this process (when the app or the CLI exits).
+    pub async fn shutdown(&self) {
+        for tool in [Tool::Apache, Tool::Php, Tool::Mariadb] {
+            let owned = self.procs.lock().await.contains_key(&tool);
+            if owned {
+                let _ = self.stop(tool).await;
+            }
+        }
+    }
 
-        let mut sys = System::new();
-        sys.refresh_processes(ProcessesToUpdate::All, true);
+    /// Stops services left running by a previous session whose launcher is gone (e.g. the app
+    /// crashed). Services owned by another live process, such as `ampp up`, are left alone.
+    pub async fn cleanup_orphans(&self) {
         for tool in Tool::ALL {
-            let pid_file = self.pid_file(tool);
-            let Some(pid) = fs::read_to_string(&pid_file).ok().and_then(|s| s.trim().parse::<usize>().ok()) else {
+            let Some(rec) = self.read_pid(tool) else {
+                let _ = fs::remove_file(self.pid_file(tool));
                 continue;
             };
-            if let Some(proc) = sys.process(Pid::from(pid)) {
-                let name = proc.name().to_string_lossy().to_lowercase();
-                if expected_process_names(tool).iter().any(|n| name.starts_with(n)) {
-                    kill_tree(pid as u32);
+            match process_alive(rec.pid, expected_process_names(tool)) {
+                false => {
+                    let _ = fs::remove_file(self.pid_file(tool));
                 }
+                true if !owner_alive(rec.owner) => self.stop_external(tool, &rec).await,
+                true => {}
             }
-            let _ = fs::remove_file(&pid_file);
         }
+    }
+
+    /// Running service launched by another process, according to its PID file.
+    fn external(&self, tool: Tool) -> Option<PidRecord> {
+        let rec = self.read_pid(tool)?;
+        (rec.owner != std::process::id() && process_alive(rec.pid, expected_process_names(tool))).then_some(rec)
+    }
+
+    /// Graceful stop of a process that is not our child.
+    async fn stop_external(&self, tool: Tool, rec: &PidRecord) {
+        #[cfg(unix)]
+        let _ = nix::sys::signal::killpg(nix::unistd::Pid::from_raw(rec.pid as i32), nix::sys::signal::Signal::SIGTERM);
+        #[cfg(windows)]
+        {
+            let graceful = (tool == Tool::Mariadb)
+                .then(|| install::locate(&self.paths, tool, &rec.id).ok())
+                .flatten()
+                .and_then(|inst| mariadb_shutdown_command(&inst, rec.port));
+            match graceful {
+                Some(mut cmd) => {
+                    let _ = cmd.status().await;
+                }
+                None => kill_tree(rec.pid),
+            }
+        }
+        let names = expected_process_names(tool);
+        let deadline = tokio::time::Instant::now() + STOP_TIMEOUT;
+        while process_alive(rec.pid, names) && tokio::time::Instant::now() < deadline {
+            tokio::time::sleep(Duration::from_millis(200)).await;
+        }
+        if process_alive(rec.pid, names) {
+            kill_tree(rec.pid);
+        }
+        let _ = fs::remove_file(self.pid_file(tool));
+    }
+
+    fn read_pid(&self, tool: Tool) -> Option<PidRecord> {
+        PidRecord::parse(&fs::read_to_string(self.pid_file(tool)).ok()?)
     }
 
     fn pid_file(&self, tool: Tool) -> PathBuf {
         self.paths.run().join(format!("{}.pid", tool.as_str()))
     }
 
-    /// Escribe la configuración y devuelve cómo lanzar el servicio.
+    /// Writes the configuration and returns how to launch the service.
     async fn prepare(&self, inst: &Installation, state: &State) -> Result<Launch> {
         let missing = |what: &str| Error::ServiceFailed {
             tool: inst.tool,
-            reason: format!("no se encontró {what} en {}", inst.root.display()),
+            reason: {
+                let root = inst.root.display();
+                tr!("no se encontró {what} en {root}", "{what} was not found in {root}")
+            },
         };
         let php_port = |s: &State| -> Result<u16> {
             let id = s.active.get(&Tool::Php).ok_or(Error::NoActiveVersion(Tool::Php))?;
@@ -237,19 +336,19 @@ impl Supervisor {
         match inst.tool {
             Tool::Php => {
                 let port = ports::php_fcgi_port(state.ports.php_fcgi_base, &inst.version);
-                let files = config::write_php(&self.paths, inst, port)?;
+                let files = config::write_php(&self.paths, inst, state)?;
                 if cfg!(windows) {
                     let program = inst.php_fastcgi().ok_or_else(|| missing("php-cgi.exe"))?;
                     Ok(Launch {
                         program,
                         args: vec!["-b".into(), format!("127.0.0.1:{port}"), "-c".into(), path_arg(&files.ini)],
-                        // Por defecto php-cgi se cierra tras 500 peticiones.
+                        // By default php-cgi exits after 500 requests.
                         env: vec![("PHP_FCGI_MAX_REQUESTS".into(), "0".into())],
                         port,
                     })
                 } else {
                     let program = inst.php_fastcgi().ok_or_else(|| missing("php-fpm"))?;
-                    let fpm = files.fpm_conf.expect("php-fpm.conf en Unix");
+                    let fpm = files.fpm_conf.expect("php-fpm.conf on Unix");
                     Ok(Launch {
                         program,
                         args: vec!["-F".into(), "-y".into(), path_arg(&fpm), "-c".into(), path_arg(&files.ini)],
@@ -261,7 +360,9 @@ impl Supervisor {
             Tool::Apache => {
                 let program = inst.httpd().ok_or_else(|| missing("httpd"))?;
                 let docroot = config::ensure_docroot(&self.paths)?;
-                let conf = config::write_apache(&self.paths, inst, state.ports.http, php_port(state)?, &docroot)?;
+                let extra = tools::phpmyadmin_apache_conf(&self.paths, state.ports.mariadb)?;
+                let conf =
+                    config::write_apache(&self.paths, inst, state.ports.http, php_port(state)?, &docroot, &extra)?;
                 let mut args = vec!["-f".into(), path_arg(&conf)];
                 if !cfg!(windows) {
                     args.push("-DFOREGROUND".into());
@@ -274,13 +375,13 @@ impl Supervisor {
                 let datadir = self.paths.mariadb_data(&inst.minor_version());
                 let conf = config::write_mariadb(&self.paths, inst, port, &datadir)?;
                 self.init_mariadb(inst, &datadir, port).await?;
-                // `--defaults-file` debe ser el primer argumento.
+                // `--defaults-file` must be the first argument.
                 Ok(Launch { program, args: vec![format!("--defaults-file={}", path_arg(&conf))], env: Vec::new(), port })
             }
         }
     }
 
-    /// Inicializa el datadir la primera vez. Root queda sin contraseña (solo escucha en 127.0.0.1).
+    /// Initializes the datadir the first time. Root has no password (it only listens on 127.0.0.1).
     async fn init_mariadb(&self, inst: &Installation, datadir: &Path, port: u16) -> Result<()> {
         if datadir.join("mysql").is_dir() {
             return Ok(());
@@ -288,7 +389,10 @@ impl Supervisor {
         let tool = Tool::Mariadb;
         let script = inst.mariadb_install_db().ok_or_else(|| Error::ServiceFailed {
             tool,
-            reason: format!("no se encontró mariadb-install-db en {}", inst.root.display()),
+            reason: {
+                let root = inst.root.display();
+                tr!("no se encontró mariadb-install-db en {root}", "mariadb-install-db was not found in {root}")
+            },
         })?;
         fs::create_dir_all(datadir).at(datadir)?;
 
@@ -312,15 +416,38 @@ impl Supervisor {
             .stderr(log);
         let status = cmd.status().await.at(&script)?;
         if !status.success() {
-            // No dejar un datadir a medias: el siguiente intento debe empezar de cero.
+            // Never leave a half-initialized datadir: the next attempt must start from scratch.
             let _ = fs::remove_dir_all(datadir);
             return Err(Error::ServiceFailed {
                 tool,
-                reason: format!("mariadb-install-db falló ({status}).\n{}", tail(&log_path, LOG_TAIL_ON_ERROR)),
+                reason: {
+                    let log = tail(&log_path, LOG_TAIL_ON_ERROR);
+                    tr!("mariadb-install-db falló ({status}).\n{log}", "mariadb-install-db failed ({status}).\n{log}")
+                },
             });
         }
         Ok(())
     }
+}
+
+/// The official Windows builds of Apache and PHP need the Visual C++ runtime; without it they exit
+/// with a cryptic "DLL not found" error, so check for it up front.
+fn check_runtime(tool: Tool) -> Result<()> {
+    if !cfg!(windows) || tool == Tool::Mariadb {
+        return Ok(());
+    }
+    let system = std::env::var_os("SystemRoot").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(r"C:\Windows"));
+    if system.join("System32").join("vcruntime140.dll").exists() {
+        return Ok(());
+    }
+    let url = "https://aka.ms/vs/17/release/vc_redist.x64.exe";
+    Err(Error::ServiceFailed {
+        tool,
+        reason: tr!(
+            "falta el Microsoft Visual C++ Redistributable. Instálalo desde {url} y vuelve a intentarlo.",
+            "the Microsoft Visual C++ Redistributable is missing. Install it from {url} and try again."
+        ),
+    })
 }
 
 fn path_arg(path: &Path) -> String {
@@ -343,10 +470,10 @@ fn spawn(launch: &Launch, log_path: &Path) -> Result<Child> {
         .stdout(log.try_clone().at(log_path)?)
         .stderr(log);
     if let Some(dir) = launch.program.parent() {
-        // En Windows las DLL se buscan junto al ejecutable y en el directorio actual.
+        // On Windows, DLLs are looked up next to the executable and in the current directory.
         cmd.current_dir(dir);
     }
-    // Grupo de procesos propio para poder señalizar también a los hijos (workers).
+    // Own process group so signals also reach the children (workers).
     #[cfg(unix)]
     cmd.process_group(0);
     #[cfg(windows)]
@@ -364,8 +491,8 @@ fn mariadb_shutdown_command(inst: &Installation, port: u16) -> Option<Command> {
     Some(cmd)
 }
 
-/// Parada ordenada; si no termina a tiempo, se fuerza.
-/// En Unix se ignora `graceful`: SIGTERM ya es un apagado limpio para los tres servicios.
+/// Graceful stop, forced if it does not finish in time.
+/// On Unix `graceful` is ignored: SIGTERM already is a clean shutdown for all three services.
 async fn terminate(child: &mut Child, graceful: Option<Command>) {
     let Some(pid) = child.id() else {
         return;
@@ -378,7 +505,7 @@ async fn terminate(child: &mut Child, graceful: Option<Command>) {
     }
     #[cfg(windows)]
     {
-        // Windows no tiene SIGTERM: MariaDB se apaga con mariadb-admin; el resto no guarda estado.
+        // Windows has no SIGTERM: MariaDB is shut down with mariadb-admin; the rest keep no state.
         match graceful {
             Some(mut cmd) => {
                 let _ = cmd.status().await;
@@ -393,7 +520,7 @@ async fn terminate(child: &mut Child, graceful: Option<Command>) {
     }
 }
 
-/// Mata el proceso y sus descendientes sin esperar.
+/// Kills the process and its descendants without waiting.
 fn kill_tree(pid: u32) {
     #[cfg(unix)]
     {
@@ -411,6 +538,23 @@ fn kill_tree(pid: u32) {
     }
 }
 
+/// `true` if `pid` exists and its executable is one of `names` (guards against reused PIDs).
+fn process_alive(pid: u32, names: &[&str]) -> bool {
+    use sysinfo::{Pid, ProcessesToUpdate, System};
+    let pid = Pid::from_u32(pid);
+    let mut sys = System::new();
+    sys.refresh_processes(ProcessesToUpdate::Some(&[pid]), true);
+    sys.process(pid).is_some_and(|p| {
+        let name = p.name().to_string_lossy().to_lowercase();
+        names.iter().any(|n| name.starts_with(n))
+    })
+}
+
+/// `true` if the Open AMPP process (app or CLI) that launched a service is still alive.
+fn owner_alive(pid: u32) -> bool {
+    process_alive(pid, &["open-ampp", "open ampp", "ampp"])
+}
+
 fn expected_process_names(tool: Tool) -> &'static [&'static str] {
     match tool {
         Tool::Apache => &["httpd"],
@@ -419,7 +563,19 @@ fn expected_process_names(tool: Tool) -> &'static [&'static str] {
     }
 }
 
-/// Últimos `max` bytes de un archivo de log (vacío si no existe).
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn pid_record_roundtrip() {
+        let rec = PidRecord { pid: 42, port: 3306, id: "11.8.9".into(), owner: 7 };
+        assert_eq!(PidRecord::parse(&rec.render()), Some(rec));
+        assert_eq!(PidRecord::parse("42"), None, "old format: ignored");
+    }
+}
+
+/// Last `max` bytes of a log file (empty if it does not exist).
 pub fn tail(path: &Path, max: u64) -> String {
     use std::io::{Read, Seek, SeekFrom};
     let Ok(mut f) = fs::File::open(path) else {

@@ -1,34 +1,34 @@
 #!/usr/bin/env bash
-# Compila MariaDB portable (relocalizable) para macOS o Linux.
-# Uso: WORK=/tmp/build ./build-mariadb.sh <versión> <directorio-de-salida>
-# Produce: <salida>/mariadb-<versión>-<os>-<arch>.tar.gz
-# Requiere: cmake ≥ 3.23, bison ≥ 3, compilador C/C++ y (en Linux) libncurses-dev.
+# Builds a portable (relocatable) MariaDB for macOS or Linux.
+# Usage: WORK=/tmp/build ./build-mariadb.sh <version> <output-dir>
+# Produces: <output>/mariadb-<version>-<os>-<arch>.tar.gz
+# Requires: cmake ≥ 3.23, bison ≥ 3, a C/C++ compiler and (on Linux) ncurses headers.
 set -euo pipefail
 HERE=$(cd "$(dirname "$0")" && pwd)
-VERSION=${1:?uso: build-mariadb.sh <versión> <salida>}
-OUT=$(mkdir -p "${2:?uso: build-mariadb.sh <versión> <salida>}" && cd "$2" && pwd)
+VERSION=${1:?usage: build-mariadb.sh <version> <output>}
+OUT=$(mkdir -p "${2:?usage: build-mariadb.sh <version> <output>}" && cd "$2" && pwd)
 WORK=${WORK:-$PWD/build-work}
 mkdir -p "$WORK" && WORK=$(cd "$WORK" && pwd)
 source "$HERE/sources.sh"
 source "$HERE/lib.sh"
 
-SHA=$(mariadb_sha256 "$VERSION") || die "versión de MariaDB sin checksum en sources.sh: $VERSION"
-command -v cmake >/dev/null || die "falta cmake"
-bison --version | head -1 | grep -qE ' [3-9]\.' || die "se necesita bison ≥ 3 (hay: $(bison --version | head -1))"
+SHA=$(mariadb_sha256 "$VERSION") || die "no checksum in sources.sh for MariaDB $VERSION"
+command -v cmake >/dev/null || die "cmake is missing"
+bison --version | head -1 | grep -qE ' [3-9]\.' || die "bison ≥ 3 is required (found: $(bison --version | head -1))"
 
 PREFIX="$WORK/mariadb-$VERSION"
 BUILD="$WORK/build-mariadb-$VERSION"
-DEPS="$WORK/deps-mariadb"   # dependencias estáticas, no se empaquetan
+DEPS="$WORK/deps-mariadb"   # static dependencies, not packaged
 rm -rf "$PREFIX"
-# KEEP_BUILD=1 reutiliza la compilación anterior (útil en local al ajustar flags).
+# KEEP_BUILD=1 reuses the previous build tree (handy locally while tweaking flags).
 [ "${KEEP_BUILD:-0}" = 1 ] || rm -rf "$BUILD"
 
-# OpenSSL estática para servidor y cliente: con WITH_SSL=bundled el Connector/C exige GnuTLS.
+# Static OpenSSL for server and client: with WITH_SSL=bundled, Connector/C insists on GnuTLS.
 build_openssl "$DEPS"
 
 src=$(fetch "$(mariadb_url "$VERSION")" "$SHA" "$WORK/src")
 
-# Motores y plugins con dependencias externas o pesados que no aportan en desarrollo local.
+# Engines and plugins that are heavy or need external libraries and add nothing for local development.
 disabled_plugins=(
   ROCKSDB MROONGA SPIDER CONNECT COLUMNSTORE OQGRAPH S3 SPHINX TOKUDB DUCKDB
   HASHICORP_KEY_MANAGEMENT AUTH_GSSAPI AUTH_PAM AUTH_PAM_V1
@@ -36,17 +36,17 @@ disabled_plugins=(
 )
 plugin_flags=()
 for p in "${disabled_plugins[@]}"; do plugin_flags+=("-DPLUGIN_$p=NO"); done
-# Los plugins del Connector/C usan OFF en lugar de NO.
+# Connector/C plugins take OFF instead of NO.
 plugin_flags+=("-DCLIENT_PLUGIN_AUTH_GSSAPI_CLIENT=OFF" "-DCLIENT_PLUGIN_ZSTD=OFF")
 
-# pkg-config solo ve nuestras dependencias: así no se cuelan librerías de Homebrew u otras del sistema.
+# pkg-config only sees our dependencies, so no Homebrew or other system libraries sneak in.
 export PKG_CONFIG_PATH="" PKG_CONFIG_LIBDIR="$DEPS/lib/pkgconfig"
 
 linker_flags=()
-# En glibc < 2.34 pthread es una librería aparte y la OpenSSL estática la necesita.
+# On glibc < 2.34 pthread is a separate library, and the static OpenSSL needs it.
 [ "$OS" = linux ] && linker_flags=(-DCMAKE_EXE_LINKER_FLAGS=-pthread -DCMAKE_SHARED_LINKER_FLAGS=-pthread -DCMAKE_MODULE_LINKER_FLAGS=-pthread)
 
-log "configurando MariaDB $VERSION"
+log "configuring MariaDB $VERSION"
 cmake -S "$src" -B "$BUILD" \
   -DBUILD_CONFIG=mysql_release \
   -DCMAKE_IGNORE_PREFIX_PATH="/opt/homebrew;/usr/local" \
@@ -69,13 +69,13 @@ cmake -S "$src" -B "$BUILD" \
   -DWITH_ROCKSDB_LZ4=OFF -DWITH_ROCKSDB_ZSTD=OFF \
   -DIGNORE_AIO_CHECK=ON -DWITH_URING=no \
   -DINSTALL_MYSQLTESTDIR= -DINSTALL_SQLBENCHDIR= \
-  "${plugin_flags[@]}" ${linker_flags[@]+"${linker_flags[@]}"} >"$WORK/mariadb-cmake.log" 2>&1 || { tail -40 "$WORK/mariadb-cmake.log"; die "cmake falló"; }
+  "${plugin_flags[@]}" ${linker_flags[@]+"${linker_flags[@]}"} >"$WORK/mariadb-cmake.log" 2>&1 || { tail -40 "$WORK/mariadb-cmake.log"; die "cmake failed"; }
 
-log "compilando (puede tardar bastante)"
-cmake --build "$BUILD" --parallel "$JOBS" >"$WORK/mariadb-build.log" 2>&1 || { tail -60 "$WORK/mariadb-build.log"; die "compilación falló"; }
+log "compiling (this takes a while)"
+cmake --build "$BUILD" --parallel "$JOBS" >"$WORK/mariadb-build.log" 2>&1 || { tail -60 "$WORK/mariadb-build.log"; die "build failed"; }
 cmake --install "$BUILD" >/dev/null
 
-log "limpiando, quitando símbolos y relocalizando"
+log "cleaning up, stripping and relocating"
 rm -rf "$PREFIX"/{mysql-test,sql-bench,man,include,docs,support-files/rpm}
 find "$PREFIX/lib" \( -name '*.a' -o -name '*.la' \) -delete
 rm -rf "$PREFIX/lib/pkgconfig"

@@ -2,3 +2,6 @@
 node_modules/
 dist/
 .DS_Store
+
+# CLI sidecar copied in by the release workflow
+apps/desktop/src-tauri/binaries/

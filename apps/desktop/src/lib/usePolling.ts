@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-/** Ejecuta `fn` ahora y cada `ms` milisegundos mientras el componente esté montado. */
+/** Runs `fn` now and every `ms` milliseconds while the component is mounted. */
 export function usePolling(fn: () => void | Promise<unknown>, ms: number, deps: unknown[] = []) {
   const saved = useRef(fn);
   saved.current = fn;

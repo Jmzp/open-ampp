@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-"""Genera catalog/manifest.json a partir de las fuentes oficiales.
+"""Generates catalog/manifest.json from the official sources.
 
-Uso: python3 catalog/generate.py
+Usage: python3 catalog/generate.py
 
-- Los binarios propios (releases `bin-*` del repo, ver .github/workflows/binaries.yml)
-  tienen prioridad: GitHub informa su SHA-256 en el campo `digest` de cada asset.
-- Para lo que no tengamos compilado se usan fuentes de terceros. Si publican checksums
-  (php.net, mariadb.org, Apache Lounge) se usan tal cual; si no (static-php-cli), se
-  descarga el archivo y se calcula el SHA-256, reutilizando los hashes ya presentes en
-  manifest.json para la misma URL.
+- Our own builds (the repo's `bin-*` releases, see .github/workflows/binaries.yml) come
+  first: GitHub reports each asset's SHA-256 in its `digest` field. They cover macOS and Linux.
+- Windows uses the official builds (php.net, mariadb.org, Apache Lounge) with the checksums
+  those projects publish.
+- Helper tools (phpMyAdmin, Composer) also use their published checksums.
 """
 
-import hashlib
 import json
+import os
 import re
 import urllib.error
 import urllib.request
@@ -27,18 +26,13 @@ MARIADB_LTS = ["10.11", "11.4", "11.8"]
 
 
 def get(url):
-    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=60) as r:
+    headers = dict(UA)
+    # Authenticated GitHub API calls avoid the 60 requests/hour anonymous limit.
+    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+    if token and url.startswith("https://api.github.com/"):
+        headers["Authorization"] = f"Bearer {token}"
+    with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=60) as r:
         return r.read().decode("utf-8", "replace")
-
-
-def sha256_of_url(url):
-    h = hashlib.sha256()
-    size = 0
-    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=300) as r:
-        while chunk := r.read(1 << 20):
-            h.update(chunk)
-            size += len(chunk)
-    return h.hexdigest(), size
 
 
 def vkey(v):
@@ -62,29 +56,12 @@ def pkg(tool, version, os, arch, url, sha256, archive, size=None):
 
 
 def php_windows():
-    base = "https://windows.php.net/downloads/releases/"
+    base = "https://downloads.php.net/~windows/releases/"
     rows = re.findall(r"([0-9a-f]{64}) \*(php-([\d.]+)-nts-Win32-vs1[67]-x64\.zip)", get(base + "sha256sum.txt"))
     by_version = {v: (sha, name) for sha, name, v in rows}
     for v in latest_per_minor(by_version, PHP_MINORS):
         sha, name = by_version[v]
         yield pkg("php", v, "windows", "x64", base + name, sha, "zip")
-
-
-def php_static(known):
-    base = "https://dl.static-php.dev/static-php-cli/common/"
-    names = set(re.findall(r"php-[\d.]+-fpm-(?:linux|macos)-(?:x86_64|aarch64)\.tar\.gz", get(base)))
-    for os_name, os in (("linux", "linux"), ("macos", "macos")):
-        for march, arch in (("x86_64", "x64"), ("aarch64", "arm64")):
-            pat = re.compile(rf"php-([\d.]+)-fpm-{os_name}-{march}\.tar\.gz")
-            versions = {m.group(1): n for n in names if (m := pat.fullmatch(n))}
-            for v in latest_per_minor(versions, PHP_MINORS):
-                url = base + versions[v]
-                if url in known:
-                    sha, size = known[url]
-                else:
-                    print(f"  descargando {versions[v]} para calcular sha256…")
-                    sha, size = sha256_of_url(url)
-                yield pkg("php", v, os, arch, url, sha, "tar-gz", size)
 
 
 def mariadb():
@@ -118,7 +95,7 @@ def own_releases():
     try:
         releases = json.loads(get(f"https://api.github.com/repos/{REPO}/releases?per_page=100"))
     except urllib.error.HTTPError as e:
-        print(f"  sin releases propias ({e.code}); solo fuentes de terceros")
+        print(f"  no own releases ({e.code}); third-party sources only")
         return
     pat = re.compile(r"(apache|mariadb|php)-([\d.]+)-(macos|linux)-(x64|arm64)\.tar\.gz")
     for release in releases:
@@ -133,28 +110,47 @@ def own_releases():
                           digest.removeprefix("sha256:"), "tar-gz", asset["size"])
 
 
+def phpmyadmin():
+    """Latest phpMyAdmin release (all languages) with its published SHA-256."""
+    version = json.loads(get("https://www.phpmyadmin.net/home_page/version.json"))["version"]
+    url = f"https://files.phpmyadmin.net/phpMyAdmin/{version}/phpMyAdmin-{version}-all-languages.zip"
+    sha = get(url + ".sha256").split()[0]
+    return {"name": "phpmyadmin", "version": version, "url": url, "sha256": sha, "archive": "zip", "size": None}
+
+
+def composer():
+    """Latest stable Composer 2 with its official checksum."""
+    stable = json.loads(get("https://getcomposer.org/versions"))["stable"][0]
+    url = "https://getcomposer.org" + stable["path"]
+    sha = get(url + ".sha256sum").split()[0]
+    return {"name": "composer", "version": stable["version"], "url": url, "sha256": sha, "size": None}
+
+
 def minor(version):
     return ".".join(version.split(".")[:2])
 
 
 def main():
-    known = {}
-    if MANIFEST.exists():
-        for p in json.loads(MANIFEST.read_text()).get("packages", []):
-            known[p["url"]] = (p["sha256"], p.get("size"))
-
-    packages = list(own_releases())
-    # Un paquete de terceros solo entra si no tenemos uno propio para esa herramienta,
-    # plataforma y versión menor.
+    # Only the newest patch of each series: older ones may carry known vulnerabilities.
+    newest = {}
+    for p in own_releases():
+        key = (p["tool"], p["os"], p["arch"], minor(p["version"]))
+        if key not in newest or vkey(p["version"]) > vkey(newest[key]["version"]):
+            newest[key] = p
+    packages = list(newest.values())
+    # A third-party package is only added when we have no build of our own for that tool,
+    # platform and minor version.
     covered = {(p["tool"], p["os"], p["arch"], minor(p["version"])) for p in packages}
-    for source in (php_windows(), php_static(known), mariadb(), apache_windows()):
+    for source in (php_windows(), mariadb(), apache_windows()):
         for p in source:
             if (p["tool"], p["os"], p["arch"], minor(p["version"])) not in covered:
                 packages.append(p)
     packages.sort(key=lambda p: (p["tool"], p["os"], p["arch"], vkey(p["version"])))
 
-    MANIFEST.write_text(json.dumps({"schema": 1, "packages": packages}, indent=2) + "\n")
-    print(f"{len(packages)} paquetes escritos en {MANIFEST}")
+    extras = [e for e in (phpmyadmin(), composer()) if e]
+
+    MANIFEST.write_text(json.dumps({"schema": 1, "packages": packages, "extras": extras}, indent=2) + "\n")
+    print(f"wrote {len(packages)} packages and {len(extras)} tools to {MANIFEST}")
 
 
 if __name__ == "__main__":

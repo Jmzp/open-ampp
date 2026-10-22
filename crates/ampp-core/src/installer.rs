@@ -1,4 +1,4 @@
-//! Descarga, verificación y extracción de paquetes del catálogo.
+//! Downloading, verifying and extracting catalog packages.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -12,7 +12,7 @@ use crate::catalog::{ArchiveKind, Package};
 use crate::error::{Error, IoContext, Result};
 use crate::paths::{AppPaths, Tool};
 
-/// Cada cuántos bytes descargados se notifica progreso.
+/// How many downloaded bytes between progress notifications.
 const PROGRESS_STEP: u64 = 512 * 1024;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -33,8 +33,8 @@ pub struct Progress {
     pub total: Option<u64>,
 }
 
-/// Instala `pkg` en `bin/<tool>/<version>` y devuelve esa ruta.
-/// Si ya existía una instalación de la misma versión, se reemplaza.
+/// Installs `pkg` into `bin/<tool>/<version>` and returns that path.
+/// An existing installation of the same version is replaced.
 pub async fn install(paths: &AppPaths, pkg: &Package, on_progress: impl Fn(Progress)) -> Result<PathBuf> {
     let report = |phase, downloaded, total| {
         on_progress(Progress { tool: pkg.tool, version: pkg.version.clone(), phase, downloaded, total })
@@ -45,7 +45,7 @@ pub async fn install(paths: &AppPaths, pkg: &Package, on_progress: impl Fn(Progr
     let archive = downloads.join(format!("{}-{}.part", pkg.tool.as_str(), pkg.version));
 
     let result = async {
-        let digest = download(pkg, &archive, |done, total| report(Phase::Downloading, done, total)).await?;
+        let digest = download(&pkg.url, pkg.size, &archive, |done, total| report(Phase::Downloading, done, total)).await?;
 
         report(Phase::Verifying, 0, None);
         if !digest.eq_ignore_ascii_case(&pkg.sha256) {
@@ -61,7 +61,7 @@ pub async fn install(paths: &AppPaths, pkg: &Package, on_progress: impl Fn(Progr
         let (kind, archive, dest_c) = (pkg.archive, archive.clone(), dest.clone());
         tokio::task::spawn_blocking(move || extract_into(kind, &archive, &dest_c))
             .await
-            .expect("la tarea de extracción no debe entrar en pánico")?;
+            .expect("the extraction task must not panic")?;
         Ok(dest)
     }
     .await;
@@ -73,7 +73,7 @@ pub async fn install(paths: &AppPaths, pkg: &Package, on_progress: impl Fn(Progr
     result
 }
 
-/// Elimina la carpeta de una versión instalada.
+/// Deletes the folder of an installed version.
 pub fn uninstall(paths: &AppPaths, tool: Tool, version: &str) -> Result<()> {
     let dir = paths.bin(tool, version);
     if !dir.is_dir() {
@@ -82,8 +82,27 @@ pub fn uninstall(paths: &AppPaths, tool: Tool, version: &str) -> Result<()> {
     fs::remove_dir_all(&dir).at(&dir)
 }
 
-/// Descarga a `dest` calculando el SHA-256 al vuelo. Devuelve el hash en hex.
-async fn download(pkg: &Package, dest: &Path, on_chunk: impl Fn(u64, Option<u64>)) -> Result<String> {
+/// Downloads a single file to `dest`, verifying its SHA-256. `dest` is only replaced if valid.
+pub async fn fetch_file(url: &str, sha256: &str, dest: &Path) -> Result<()> {
+    let dir = dest.parent().expect("dest tiene padre");
+    fs::create_dir_all(dir).at(dir)?;
+    let part = dest.with_extension("part");
+    let result = async {
+        let digest = download(url, None, &part, |_, _| {}).await?;
+        if !digest.eq_ignore_ascii_case(sha256) {
+            return Err(Error::Checksum { file: url.to_string(), expected: sha256.to_string(), actual: digest });
+        }
+        fs::rename(&part, dest).at(dest)
+    }
+    .await;
+    if result.is_err() {
+        let _ = fs::remove_file(&part);
+    }
+    result
+}
+
+/// Downloads to `dest` hashing on the fly. Returns the SHA-256 in hex.
+async fn download(url: &str, size: Option<u64>, dest: &Path, on_chunk: impl Fn(u64, Option<u64>)) -> Result<String> {
     let mut file = tokio::fs::File::create(dest).await.at(dest)?;
     let mut hasher = Sha256::new();
     let mut done = 0u64;
@@ -99,7 +118,7 @@ async fn download(pkg: &Package, dest: &Path, on_chunk: impl Fn(u64, Option<u64>
         Ok(())
     };
 
-    if let Some(local) = pkg.url.strip_prefix("file://") {
+    if let Some(local) = url.strip_prefix("file://") {
         let mut src = tokio::fs::File::open(local).await.at(local)?;
         let total = src.metadata().await.at(local)?.len();
         let mut buf = vec![0u8; 64 * 1024];
@@ -111,9 +130,9 @@ async fn download(pkg: &Package, dest: &Path, on_chunk: impl Fn(u64, Option<u64>
             write(&buf[..n], Some(total)).await?;
         }
     } else {
-        let http = |source| Error::Http { url: pkg.url.clone(), source };
-        let resp = reqwest::get(&pkg.url).await.and_then(|r| r.error_for_status()).map_err(http)?;
-        let total = resp.content_length().or(pkg.size);
+        let http = |source| Error::Http { url: url.to_string(), source };
+        let resp = reqwest::get(url).await.and_then(|r| r.error_for_status()).map_err(http)?;
+        let total = resp.content_length().or(size);
         let mut stream = resp.bytes_stream();
         while let Some(chunk) = stream.next().await {
             write(&chunk.map_err(http)?, total).await?;
@@ -124,9 +143,9 @@ async fn download(pkg: &Package, dest: &Path, on_chunk: impl Fn(u64, Option<u64>
     Ok(hex::encode(hasher.finalize()))
 }
 
-/// Extrae en un directorio temporal junto a `dest` y lo mueve a su sitio.
-/// Si el archivo trae una única carpeta raíz (p. ej. `httpd-2.4.62/`), se aplana.
-fn extract_into(kind: ArchiveKind, archive: &Path, dest: &Path) -> Result<()> {
+/// Extracts into a staging directory next to `dest` and moves it into place.
+/// A single root folder in the archive (e.g. `httpd-2.4.62/`) is flattened.
+pub(crate) fn extract_into(kind: ArchiveKind, archive: &Path, dest: &Path) -> Result<()> {
     let parent = dest.parent().expect("dest tiene padre");
     fs::create_dir_all(parent).at(parent)?;
     let name = dest.file_name().expect("dest tiene nombre").to_string_lossy();
@@ -160,8 +179,11 @@ fn extract_zip(archive: &Path, out: &Path) -> Result<()> {
     let mut zip = zip::ZipArchive::new(file).map_err(|e| bad(e.to_string()))?;
     for i in 0..zip.len() {
         let mut entry = zip.by_index(i).map_err(|e| bad(e.to_string()))?;
-        // `enclosed_name` rechaza rutas absolutas o con `..` (zip slip).
-        let rel = entry.enclosed_name().ok_or_else(|| bad(format!("ruta insegura: {}", entry.name())))?;
+        // `enclosed_name` rejects absolute paths and `..` (zip slip).
+        let rel = entry.enclosed_name().ok_or_else(|| {
+            let name = entry.name();
+            bad(tr!("ruta insegura: {name}", "unsafe path: {name}"))
+        })?;
         if is_macos_metadata(&rel) {
             continue;
         }
@@ -194,13 +216,13 @@ fn extract_tar_gz(archive: &Path, out: &Path) -> Result<()> {
         if is_macos_metadata(&entry.path().map_err(bad)?) {
             continue;
         }
-        // `unpack_in` rechaza entradas que saldrían de `out`.
+        // `unpack_in` rejects entries that would escape `out`.
         entry.unpack_in(out).map_err(bad)?;
     }
     Ok(())
 }
 
-/// Archivos AppleDouble (`._*`) y `__MACOSX/` que añaden las herramientas de macOS.
+/// AppleDouble files (`._*`) and `__MACOSX/` added by macOS tools.
 fn is_macos_metadata(path: &Path) -> bool {
     path.components().any(|c| {
         let c = c.as_os_str().to_string_lossy();
@@ -279,7 +301,7 @@ mod tests {
         {
             use std::os::unix::fs::PermissionsExt;
             let mode = fs::metadata(dest.join("bin/php")).unwrap().permissions().mode();
-            assert_eq!(mode & 0o111, 0o111, "debe conservar el bit de ejecución");
+            assert_eq!(mode & 0o111, 0o111, "the executable bit must be preserved");
         }
         let phases = phases.into_inner().unwrap();
         assert_eq!(phases.first(), Some(&Phase::Downloading));

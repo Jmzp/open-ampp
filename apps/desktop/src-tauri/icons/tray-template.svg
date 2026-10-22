@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="44" height="44" viewBox="0 0 44 44">
+  <!-- macOS tray icon (template image: only opacity matters). Three servers with their LEDs. -->
+  <defs>
+    <mask id="holes">
+      <rect width="44" height="44" fill="#fff"/>
+      <circle cx="11.5" cy="9.5" r="2.4" fill="#000"/>
+      <circle cx="11.5" cy="22" r="2.4" fill="#000"/>
+      <circle cx="11.5" cy="34.5" r="2.4" fill="#000"/>
+      <rect x="18" y="8.4" width="16" height="2.2" rx="1.1" fill="#000"/>
+      <rect x="18" y="20.9" width="16" height="2.2" rx="1.1" fill="#000"/>
+      <rect x="18" y="33.4" width="16" height="2.2" rx="1.1" fill="#000"/>
+    </mask>
+  </defs>
+  <g mask="url(#holes)" fill="#000">
+    <rect x="4" y="3.5" width="36" height="12" rx="3.5"/>
+    <rect x="4" y="16" width="36" height="12" rx="3.5"/>
+    <rect x="4" y="28.5" width="36" height="12" rx="3.5"/>
+  </g>
+</svg>

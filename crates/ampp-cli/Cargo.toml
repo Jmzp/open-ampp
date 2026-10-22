@@ -1,0 +1,15 @@
+[package]
+name = "ampp-cli"
+description = "Open AMPP from the terminal: services, versions, php, composer and mariadb"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "ampp"
+path = "src/main.rs"
+
+[dependencies]
+ampp-core.workspace = true
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "time"] }

@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, IoContext, Result};
 
-/// Herramientas gestionadas por OPEN_AMPP.
+/// Tools managed by Open AMPP.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Tool {
@@ -24,9 +24,24 @@ impl Tool {
             Tool::Mariadb => "mariadb",
         }
     }
+
+    /// Display name (`MariaDB`).
+    pub fn label(self) -> &'static str {
+        match self {
+            Tool::Apache => "Apache",
+            Tool::Php => "PHP",
+            Tool::Mariadb => "MariaDB",
+        }
+    }
 }
 
-/// Layout de directorios en disco:
+impl std::fmt::Display for Tool {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.label())
+    }
+}
+
+/// On-disk directory layout:
 ///
 /// ```text
 /// <root>/
@@ -42,8 +57,12 @@ pub struct AppPaths {
 }
 
 impl AppPaths {
-    /// Directorio de datos estándar del SO (p. ej. `~/Library/Application Support/dev.openampp.open-ampp`).
+    /// The OS standard data directory (e.g. `~/Library/Application Support/dev.openampp.open-ampp`),
+    /// or `OPEN_AMPP_HOME` when set (portable installs, tests).
     pub fn from_system() -> Result<Self> {
+        if let Some(home) = std::env::var_os("OPEN_AMPP_HOME").filter(|h| !h.is_empty()) {
+            return Ok(Self::new(home));
+        }
         let dirs = directories::ProjectDirs::from("dev", "openampp", "open-ampp").ok_or(Error::NoDataDir)?;
         Ok(Self::new(dirs.data_dir()))
     }
@@ -76,12 +95,12 @@ impl AppPaths {
         self.root.join("run")
     }
 
-    /// DocumentRoot por defecto (equivalente a `htdocs` de XAMPP).
+    /// Default DocumentRoot (XAMPP's `htdocs`).
     pub fn www(&self) -> PathBuf {
         self.root.join("www")
     }
 
-    /// Descargas temporales en curso.
+    /// Downloads in progress.
     pub fn downloads(&self) -> PathBuf {
         self.root.join("downloads")
     }
@@ -94,7 +113,7 @@ impl AppPaths {
         self.root.join("state.json")
     }
 
-    /// Crea los directorios base si no existen.
+    /// Creates the base directories if missing.
     pub fn ensure(&self) -> Result<()> {
         let mut dirs = vec![self.logs(), self.run(), self.certs()];
         for tool in Tool::ALL {

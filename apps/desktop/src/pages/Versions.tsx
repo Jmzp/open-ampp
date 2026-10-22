@@ -10,26 +10,16 @@ import {
   type Tool,
   versionLabel,
 } from "../lib/api";
+import { t } from "../lib/i18n";
 
-const PHASE_LABELS = {
-  downloading: "Descargando",
-  verifying: "Verificando",
-  extracting: "Extrayendo",
-  done: "Listo",
-} as const;
 
 const HOMEBREW_FORMULA: Record<Tool, string> = { apache: "httpd", php: "php", mariadb: "mariadb" };
 
 function EmptyHint({ tool, platform }: { tool: Tool; platform: Platform | null }) {
   if (platform?.os === "macos") {
-    return (
-      <p className="muted">
-        Aún no hay binarios de {TOOL_LABELS[tool]} para macOS en el catálogo. Mientras tanto puedes instalarlo con
-        Homebrew (<code>brew install {HOMEBREW_FORMULA[tool]}</code>) y reiniciar Open Ampp: se detecta solo.
-      </p>
-    );
+    return <p className="muted">{t.versions.emptyMac(TOOL_LABELS[tool], HOMEBREW_FORMULA[tool])}</p>;
   }
-  return <p className="muted">Aún no hay versiones de {TOOL_LABELS[tool]} para tu sistema en el catálogo.</p>;
+  return <p className="muted">{t.versions.empty(TOOL_LABELS[tool])}</p>;
 }
 
 const key = (tool: Tool, version: string) => `${tool}@${version}`;
@@ -53,8 +43,10 @@ export function Versions({ onChanged }: { onChanged: () => void }) {
     const unlisten = api.onInstallProgress((p) =>
       setProgress((prev) => ({ ...prev, [key(p.tool, p.version)]: p })),
     );
+    const unlistenCatalog = api.onCatalogUpdated(refresh);
     return () => {
       unlisten.then((f) => f());
+      unlistenCatalog.then((f) => f());
     };
   }, []);
 
@@ -98,15 +90,16 @@ export function Versions({ onChanged }: { onChanged: () => void }) {
             <ul className="rows">
               {entries.map((entry) => {
                 const k = key(entry.tool, entry.version);
-                const p = progress[k];
+                // An upgrade reports progress under the new version.
+                const p = progress[k] ?? (entry.update ? progress[key(entry.tool, entry.update)] : undefined);
                 const isBusy = busy.has(k);
                 return (
                   <li key={k} className="row">
                     <span className="version">{versionLabel(entry.version, entry.detail)}</span>
                     <span className="meta">
-                      {entry.active && <span className="badge">Activa</span>}
-                      {entry.installed && !entry.active && <span className="badge muted-badge">Instalada</span>}
-                      {entry.system && <span className="muted">Instalada en el sistema</span>}
+                      {entry.active && <span className="badge">{t.versions.active}</span>}
+                      {entry.installed && !entry.active && <span className="badge muted-badge">{t.versions.installed}</span>}
+                      {entry.system && <span className="muted">{t.versions.systemInstall}</span>}
                       {!entry.installed && entry.size != null && (
                         <span className="muted">{formatBytes(entry.size)}</span>
                       )}
@@ -117,7 +110,20 @@ export function Versions({ onChanged }: { onChanged: () => void }) {
                       <span className="actions">
                         {!entry.installed && (
                           <button disabled={isBusy} onClick={() => run(entry, () => api.install(tool, entry.version))}>
-                            {isBusy ? "Preparando…" : "Instalar"}
+                            {isBusy ? t.versions.preparing : t.versions.install}
+                          </button>
+                        )}
+                        {entry.update && (
+                          <button
+                            title={t.versions.updateHint}
+                            disabled={isBusy}
+                            onClick={() =>
+                              run(entry, async () => {
+                                await api.upgrade(tool, entry.version);
+                              })
+                            }
+                          >
+                            {t.versions.updateTo(entry.update)}
                           </button>
                         )}
                         {entry.installed && !entry.active && (
@@ -126,7 +132,7 @@ export function Versions({ onChanged }: { onChanged: () => void }) {
                             disabled={isBusy}
                             onClick={() => run(entry, () => api.setActive(tool, entry.version))}
                           >
-                            Usar por defecto
+                            {t.versions.makeDefault}
                           </button>
                         )}
                         {entry.installed && !entry.system && (
@@ -135,7 +141,7 @@ export function Versions({ onChanged }: { onChanged: () => void }) {
                             disabled={isBusy}
                             onClick={() => run(entry, () => api.uninstall(tool, entry.version))}
                           >
-                            Desinstalar
+                            {t.versions.uninstall}
                           </button>
                         )}
                       </span>
@@ -159,7 +165,7 @@ function ProgressBar({ progress }: { progress: InstallProgress }) {
   return (
     <span className="progress">
       <span className="progress-label">
-        {PHASE_LABELS[progress.phase]}
+        {t.versions.phases[progress.phase]}
         {pct != null && ` ${pct}%`}
       </span>
       <span className="progress-track">

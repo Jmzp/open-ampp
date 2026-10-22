@@ -24,23 +24,54 @@ export interface Project {
   https: boolean;
 }
 
+export type Extra = "phpmyadmin" | "composer";
+
+export interface PhpSettings {
+  directives: Record<string, string>;
+  /** Enabled extensions (Windows only). `null` means the defaults (XAMPP's). */
+  extensions: string[] | null;
+  custom: string;
+}
+
 export interface AppState {
   installed: Partial<Record<Tool, string[]>>;
   active: Partial<Record<Tool, string>>;
   ports: Ports;
   projects: Project[];
+  php: PhpSettings;
+  extras: Partial<Record<Extra, string>>;
 }
+
+export interface PhpConfig {
+  settings: PhpSettings;
+  defaults: Record<string, string>;
+  version: string | null;
+  loaded: string[];
+  optional: { name: string; enabled: boolean }[];
+  ini_path: string | null;
+}
+
+export interface ToolsInfo {
+  extras: { name: Extra; installed: string | null; available: string | null }[];
+  shims_dir: string;
+  on_path: boolean;
+  commands: string[];
+}
+
+export type Location = "www" | "data" | "logs" | "php_ini";
 
 export interface CatalogEntry {
   tool: Tool;
-  /** Identificador: "8.3.12" o "homebrew". */
+  /** Id: "8.3.12" or "homebrew". */
   version: string;
-  /** Versión real cuando difiere del identificador (Homebrew). */
+  /** Actual version when it differs from the id (Homebrew). */
   detail: string | null;
   size: number | null;
   installed: boolean;
   active: boolean;
   system: boolean;
+  /** Newer patch release of this installed version (e.g. a security fix). */
+  update: string | null;
 }
 
 export interface ServiceStatus {
@@ -50,11 +81,13 @@ export interface ServiceStatus {
   version: string | null;
   port: number | null;
   error: string | null;
+  /** Launched from a terminal (`ampp up`). */
+  external: boolean;
 }
 
 export const HOMEBREW = "homebrew";
 
-/** Texto para mostrar una versión ("homebrew" → "Homebrew 2.4.62"). */
+/** Display text for a version ("homebrew" → "Homebrew 2.4.62"). */
 export const versionLabel = (version: string, detail?: string | null) =>
   version === HOMEBREW ? `Homebrew${detail ? ` ${detail}` : ""}` : version;
 
@@ -80,6 +113,9 @@ export const api = {
   getCatalog: () => invoke<CatalogEntry[]>("get_catalog"),
   install: (tool: Tool, version: string) => invoke<void>("install_package", { tool, version }),
   uninstall: (tool: Tool, version: string) => invoke<void>("uninstall_package", { tool, version }),
+  /** Moves an installed version to its newest patch release; returns the new version. */
+  upgrade: (tool: Tool, version: string) => invoke<string>("upgrade_package", { tool, version }),
+  onCatalogUpdated: (cb: () => void): Promise<UnlistenFn> => listen("catalog-updated", () => cb()),
   setActive: (tool: Tool, version: string) => invoke<void>("set_active", { tool, version }),
   serviceStatus: () => invoke<ServiceStatus[]>("service_status"),
   startService: (tool: Tool) => invoke<void>("start_service", { tool }),
@@ -88,11 +124,20 @@ export const api = {
   startAll: () => invoke<string[]>("start_all"),
   stopAll: () => invoke<void>("stop_all"),
   readLog: (tool: Tool) => invoke<string>("read_log", { tool }),
+  getPhpConfig: () => invoke<PhpConfig>("get_php_config"),
+  /** Returns `true` if PHP was restarted to apply the changes. */
+  savePhpSettings: (settings: PhpSettings) => invoke<boolean>("save_php_settings", { settings }),
+  getTools: () => invoke<ToolsInfo>("get_tools"),
+  installExtra: (name: Extra) => invoke<void>("install_extra", { name }),
+  uninstallExtra: (name: Extra) => invoke<void>("uninstall_extra", { name }),
+  addShimsToPath: () => invoke<string[]>("add_shims_to_path"),
+  openLocation: (what: Location) => invoke<void>("open_location", { what }),
+  setPorts: (http: number, mariadb: number) => invoke<void>("set_ports", { http, mariadb }),
   onInstallProgress: (cb: (p: InstallProgress) => void): Promise<UnlistenFn> =>
     listen<InstallProgress>("install-progress", (e) => cb(e.payload)),
 };
 
-/** Los errores de comandos llegan como string serializado desde Rust. */
+/** Command errors arrive from Rust as serialized strings. */
 export const errorMessage = (e: unknown) => (typeof e === "string" ? e : String(e));
 
 export const formatBytes = (n: number) =>
