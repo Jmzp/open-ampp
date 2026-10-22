@@ -42,7 +42,12 @@ Open AMPP is a modern take on XAMPP / MAMP / LAMPP. Open the app, pick the versi
 | **Apache** 2.4 | ✅ | ✅ | ✅ |
 | **phpMyAdmin** · **Composer** | ✅ | ✅ | ✅ |
 
-> Windows uses the official builds (php.net, mariadb.org, Apache Lounge), which need the [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist). On macOS and Linux, where there are no official portable builds, Open AMPP publishes its own (see [Our own binaries](#-our-own-binaries)). On Linux they run on any distro with glibc ≥ 2.28 (Ubuntu 20.04+, Debian 10+, RHEL/Alma/Rocky 8+, Fedora, Arch…); PHP is fully static.
+> [!IMPORTANT]
+> **Windows requirement: Microsoft Visual C++ Redistributable (x64).** Windows uses the official builds (php.net, mariadb.org, Apache Lounge), which depend on it. Most PCs already have it; if yours does not, Open AMPP tells you when starting the services.
+>
+> **[Download vc_redist.x64.exe](https://aka.ms/vs/17/release/vc_redist.x64.exe)** (direct link from Microsoft) · [more info](https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist)
+
+> On macOS and Linux, where there are no official portable builds, Open AMPP publishes its own (see [Our own binaries](#-our-own-binaries)). On Linux they run on any distro with glibc ≥ 2.28 (Ubuntu 20.04+, Debian 10+, RHEL/Alma/Rocky 8+, Fedora, Arch…); PHP is fully static.
 >
 > **Testing status:** the whole stack is tested end to end on macOS (Apple Silicon) and Linux arm64 (Ubuntu 24.04). Windows and the x64 builds for macOS/Linux are built in CI but have not been tried on real machines yet. If you use them, [tell us how it goes](https://github.com/Jmzp/open-ampp/issues).
 
