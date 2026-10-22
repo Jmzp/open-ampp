@@ -21,8 +21,8 @@ MANIFEST = Path(__file__).with_name("manifest.json")
 UA = {"User-Agent": "Mozilla/5.0 (open-ampp catalog generator)"}
 REPO = "Jmzp/open-ampp"
 
-PHP_MINORS = ["8.2", "8.3", "8.4"]
-MARIADB_LTS = ["10.11", "11.4", "11.8"]
+PHP_MINORS = ["8.2", "8.3", "8.4", "8.5"]
+MARIADB_LTS = ["10.11", "11.4", "11.8", "12.3"]
 
 
 def get(url):
