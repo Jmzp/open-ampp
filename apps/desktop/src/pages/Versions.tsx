@@ -6,7 +6,9 @@ import {
   TOOL_LABELS,
   type CatalogEntry,
   type InstallProgress,
+  type Platform,
   type Tool,
+  versionLabel,
 } from "../lib/api";
 
 const PHASE_LABELS = {
@@ -16,6 +18,20 @@ const PHASE_LABELS = {
   done: "Listo",
 } as const;
 
+const HOMEBREW_FORMULA: Record<Tool, string> = { apache: "httpd", php: "php", mariadb: "mariadb" };
+
+function EmptyHint({ tool, platform }: { tool: Tool; platform: Platform | null }) {
+  if (platform?.os === "macos") {
+    return (
+      <p className="muted">
+        Aún no hay binarios de {TOOL_LABELS[tool]} para macOS en el catálogo. Mientras tanto puedes instalarlo con
+        Homebrew (<code>brew install {HOMEBREW_FORMULA[tool]}</code>) y reiniciar OPEN_AMPP: se detecta solo.
+      </p>
+    );
+  }
+  return <p className="muted">Aún no hay versiones de {TOOL_LABELS[tool]} para tu sistema en el catálogo.</p>;
+}
+
 const key = (tool: Tool, version: string) => `${tool}@${version}`;
 
 export function Versions({ onChanged }: { onChanged: () => void }) {
@@ -23,6 +39,7 @@ export function Versions({ onChanged }: { onChanged: () => void }) {
   const [progress, setProgress] = useState<Record<string, InstallProgress>>({});
   const [busy, setBusy] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [platform, setPlatform] = useState<Platform | null>(null);
 
   const refresh = () =>
     api
@@ -32,6 +49,7 @@ export function Versions({ onChanged }: { onChanged: () => void }) {
 
   useEffect(() => {
     refresh();
+    api.getPlatform().then(setPlatform);
     const unlisten = api.onInstallProgress((p) =>
       setProgress((prev) => ({ ...prev, [key(p.tool, p.version)]: p })),
     );
@@ -75,7 +93,7 @@ export function Versions({ onChanged }: { onChanged: () => void }) {
         <div key={tool} className="card">
           <h2>{TOOL_LABELS[tool]}</h2>
           {entries.length === 0 ? (
-            <p className="muted">Aún no hay versiones para tu sistema.</p>
+            <EmptyHint tool={tool} platform={platform} />
           ) : (
             <ul className="rows">
               {entries.map((entry) => {
@@ -84,10 +102,11 @@ export function Versions({ onChanged }: { onChanged: () => void }) {
                 const isBusy = busy.has(k);
                 return (
                   <li key={k} className="row">
-                    <span className="version">{entry.version}</span>
+                    <span className="version">{versionLabel(entry.version, entry.detail)}</span>
                     <span className="meta">
                       {entry.active && <span className="badge">Activa</span>}
                       {entry.installed && !entry.active && <span className="badge muted-badge">Instalada</span>}
+                      {entry.system && <span className="muted">Instalada en el sistema</span>}
                       {!entry.installed && entry.size != null && (
                         <span className="muted">{formatBytes(entry.size)}</span>
                       )}
@@ -110,7 +129,7 @@ export function Versions({ onChanged }: { onChanged: () => void }) {
                             Usar por defecto
                           </button>
                         )}
-                        {entry.installed && (
+                        {entry.installed && !entry.system && (
                           <button
                             className="ghost"
                             disabled={isBusy}

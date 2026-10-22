@@ -25,7 +25,7 @@ npm run tauri dev                # abre la app
 
 1. ✅ Fundaciones: monorepo, `ampp-core` (rutas + `state.json`), scaffold Tauri/React, CI
 2. ✅ Catálogo + instalador (descarga, sha256, extracción, pantalla de Versiones)
-3. Servicios: Apache + PHP (FastCGI) + MariaDB, logs y health checks
+3. ✅ Servicios: Apache + PHP (FastCGI) + MariaDB, logs y health checks
 4. Pipelines de binarios portables para macOS/Linux
 5. Proyectos y vhosts (`*.localhost`, PHP por proyecto, SSL)
 6. Pulido: tray, editor de php.ini, Adminer, Composer, CLI
@@ -37,5 +37,5 @@ npm run tauri dev                # abre la app
 
 ```sh
 python3 catalog/generate.py
-cargo test -p ampp-core --test real_install -- --ignored   # descarga real (requiere red)
+cargo test -p ampp-core -- --ignored   # descarga e inicia PHP real (requiere red)
 ```

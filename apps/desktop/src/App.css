@@ -70,3 +70,16 @@ button.ghost:hover:not(:disabled) { color: var(--danger); }
 .progress-fill { display: block; height: 100%; background: var(--accent); transition: width 0.2s; }
 .progress-fill.indeterminate { width: 40%; animation: slide 1s ease-in-out infinite; }
 @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+
+/* Panel */
+.toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 24px; }
+.toolbar > button { width: auto; padding: 8px 16px; }
+.state-label { margin-left: auto; font-size: 0.8rem; }
+.dot.failed { background: var(--danger); }
+.card .actions button { flex: 1; }
+.error.small { font-size: 0.8rem; margin: 0 0 10px; }
+.error-box { white-space: pre-wrap; font-size: 0.8rem; color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); border-radius: 8px; padding: 10px 12px; margin: 12px 0 0; max-height: 200px; overflow: auto; }
+
+/* Logs */
+.check { display: flex; gap: 6px; align-items: center; margin-left: auto; font-size: 0.85rem; }
+.log-view { margin: 16px 0; height: 460px; overflow: auto; background: #0d1117; color: #c9d1d9; border-radius: 10px; padding: 14px; font-size: 0.78rem; line-height: 1.45; white-space: pre-wrap; word-break: break-all; }

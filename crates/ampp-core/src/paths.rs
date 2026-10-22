@@ -76,6 +76,11 @@ impl AppPaths {
         self.root.join("run")
     }
 
+    /// DocumentRoot por defecto (equivalente a `htdocs` de XAMPP).
+    pub fn www(&self) -> PathBuf {
+        self.root.join("www")
+    }
+
     /// Descargas temporales en curso.
     pub fn downloads(&self) -> PathBuf {
         self.root.join("downloads")

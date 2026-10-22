@@ -34,6 +34,14 @@ pub enum Error {
     NotInCatalog { tool: Tool, version: String },
     #[error("{tool:?} {version} no está instalado")]
     NotInstalled { tool: Tool, version: String },
+    #[error("no hay una versión activa de {0:?}; instala una en Versiones")]
+    NoActiveVersion(Tool),
+    #[error("el puerto {port} ya está en uso; ciérralo o cambia el puerto de {tool:?} en Ajustes")]
+    PortInUse { tool: Tool, port: u16 },
+    #[error("{tool:?} no pudo iniciarse: {reason}")]
+    ServiceFailed { tool: Tool, reason: String },
+    #[error("las instalaciones del sistema (Homebrew) se gestionan fuera de OPEN_AMPP")]
+    SystemInstall,
 }
 
 pub type Result<T> = std::result::Result<T, Error>;

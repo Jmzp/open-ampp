@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, errorMessage, type AppState } from "./lib/api";
 import { Dashboard } from "./pages/Dashboard";
+import { Logs } from "./pages/Logs";
 import { Versions } from "./pages/Versions";
 import "./App.css";
 
-type Page = "dashboard" | "versions";
+type Page = "dashboard" | "versions" | "logs";
 
 const PAGES: { id: Page; label: string }[] = [
   { id: "dashboard", label: "Panel" },
   { id: "versions", label: "Versiones" },
+  { id: "logs", label: "Logs" },
 ];
 
 function App() {
@@ -51,6 +53,7 @@ function App() {
 
       {page === "dashboard" && state && <Dashboard state={state} onManage={() => setPage("versions")} />}
       {page === "versions" && <Versions onChanged={reload} />}
+      {page === "logs" && <Logs />}
 
       {root && <footer className="muted">Datos en {root}</footer>}
     </main>
