@@ -99,3 +99,5 @@ jobs:
           releaseDraft: true
           prerelease: false
           includeUpdaterJson: true
+          # Uploads from parallel jobs occasionally collide ("already_exists"); retrying replaces the asset.
+          retryAttempts: 2
