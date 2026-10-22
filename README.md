@@ -14,6 +14,9 @@ Several versions of each tool, a friendly desktop app, and the same workflow on 
 ![Platforms](https://img.shields.io/badge/platforms-Windows%20·%20macOS%20·%20Linux-6366f1)
 ![Built with](https://img.shields.io/badge/built%20with-Tauri%202%20·%20Rust%20·%20React-7c3aed)
 
+<br><br>
+<img src="docs/open-ampp-tour.gif" alt="Open AMPP: dashboard, versions, PHP settings and tools" width="820">
+
 </div>
 
 ---

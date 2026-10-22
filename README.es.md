@@ -14,6 +14,9 @@ Varias versiones de cada herramienta, una app de escritorio amigable y el mismo 
 ![Plataformas](https://img.shields.io/badge/plataformas-Windows%20·%20macOS%20·%20Linux-6366f1)
 ![Hecho con](https://img.shields.io/badge/hecho%20con-Tauri%202%20·%20Rust%20·%20React-7c3aed)
 
+<br><br>
+<img src="docs/open-ampp-tour.gif" alt="Open AMPP: panel, versiones, ajustes de PHP y herramientas" width="820">
+
 </div>
 
 ---
