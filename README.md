@@ -49,7 +49,7 @@ Open AMPP is a modern take on XAMPP / MAMP / LAMPP. Open the app, pick the versi
 
 > On macOS and Linux, where there are no official portable builds, Open AMPP publishes its own (see [Our own binaries](#-our-own-binaries)). On Linux they run on any distro with glibc ≥ 2.28 (Ubuntu 20.04+, Debian 10+, RHEL/Alma/Rocky 8+, Fedora, Arch…); PHP is fully static.
 >
-> **Testing status:** the whole stack is tested end to end on macOS (Apple Silicon) and Linux arm64 (Ubuntu 24.04). Windows and the x64 builds for macOS/Linux are built in CI but have not been tried on real machines yet. If you use them, [tell us how it goes](https://github.com/Jmzp/open-ampp/issues).
+> **Testing status:** the whole stack (Apache, PHP, MariaDB and phpMyAdmin) is tested end to end on macOS (Apple Silicon), Linux arm64 (Ubuntu 24.04) and Windows 11 x64. The x64 builds for macOS and Linux are built in CI but have not been tried on real machines yet. If you use them, [tell us how it goes](https://github.com/Jmzp/open-ampp/issues).
 
 ## 🚀 Getting started
 
