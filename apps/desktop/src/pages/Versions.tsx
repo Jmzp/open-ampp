@@ -12,7 +12,6 @@ import {
 } from "../lib/api";
 import { t } from "../lib/i18n";
 
-
 const HOMEBREW_FORMULA: Record<Tool, string> = { apache: "httpd", php: "php", mariadb: "mariadb" };
 
 function EmptyHint({ tool, platform }: { tool: Tool; platform: Platform | null }) {
@@ -37,15 +36,41 @@ export function Versions({ onChanged }: { onChanged: () => void }) {
       .then(setCatalog)
       .catch((e) => setError(errorMessage(e)));
 
+  const forget = (k: string) => {
+    setBusy((s) => {
+      const next = new Set(s);
+      next.delete(k);
+      return next;
+    });
+    setProgress((prev) => {
+      const { [k]: _, ...rest } = prev;
+      return rest;
+    });
+  };
+
   useEffect(() => {
     refresh();
     api.getPlatform().then(setPlatform);
-    const unlisten = api.onInstallProgress((p) =>
-      setProgress((prev) => ({ ...prev, [key(p.tool, p.version)]: p })),
-    );
+    // Installs keep running in the backend while another page is shown: pick them up again.
+    api.activeInstalls().then((running) => {
+      setProgress((prev) => Object.fromEntries([...Object.entries(prev), ...running.map((p) => [key(p.tool, p.version), p])]));
+      setBusy((prev) => new Set([...prev, ...running.map((p) => key(p.tool, p.version))]));
+    });
+    const unlisten = api.onInstallProgress((p) => {
+      const k = key(p.tool, p.version);
+      setProgress((prev) => ({ ...prev, [k]: p }));
+      setBusy((prev) => (prev.has(k) ? prev : new Set(prev).add(k)));
+    });
+    const unlistenFinished = api.onInstallFinished((f) => {
+      forget(key(f.tool, f.version));
+      if (f.error) setError(`${TOOL_LABELS[f.tool]} ${f.version}: ${f.error}`);
+      refresh();
+      onChanged();
+    });
     const unlistenCatalog = api.onCatalogUpdated(refresh);
     return () => {
       unlisten.then((f) => f());
+      unlistenFinished.then((f) => f());
       unlistenCatalog.then((f) => f());
     };
   }, []);
@@ -61,15 +86,7 @@ export function Versions({ onChanged }: { onChanged: () => void }) {
     } catch (e) {
       setError(`${TOOL_LABELS[entry.tool]} ${entry.version}: ${errorMessage(e)}`);
     } finally {
-      setBusy((s) => {
-        const next = new Set(s);
-        next.delete(k);
-        return next;
-      });
-      setProgress((prev) => {
-        const { [k]: _, ...rest } = prev;
-        return rest;
-      });
+      forget(k);
     }
   };
 
@@ -91,8 +108,9 @@ export function Versions({ onChanged }: { onChanged: () => void }) {
               {entries.map((entry) => {
                 const k = key(entry.tool, entry.version);
                 // An upgrade reports progress under the new version.
-                const p = progress[k] ?? (entry.update ? progress[key(entry.tool, entry.update)] : undefined);
-                const isBusy = busy.has(k);
+                const upgradeKey = entry.update ? key(entry.tool, entry.update) : null;
+                const p = progress[k] ?? (upgradeKey ? progress[upgradeKey] : undefined);
+                const isBusy = busy.has(k) || (upgradeKey !== null && busy.has(upgradeKey));
                 return (
                   <li key={k} className="row">
                     <span className="version">{versionLabel(entry.version, entry.detail)}</span>

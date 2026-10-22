@@ -60,6 +60,12 @@ export interface ToolsInfo {
 
 export type Location = "www" | "data" | "logs" | "php_ini";
 
+export interface MariadbInfo {
+  connection: { host: string; port: number; user: string; password: string; socket: string | null };
+  /** `null` while MariaDB is not running. */
+  databases: { name: string; tables: number; size: number; system: boolean }[] | null;
+}
+
 export interface CatalogEntry {
   tool: Tool;
   /** Id: "8.3.12" or "homebrew". */
@@ -101,6 +107,13 @@ export interface InstallProgress {
   total: number | null;
 }
 
+export interface InstallFinished {
+  tool: Tool;
+  version: string;
+  /** Set when the install failed. */
+  error: string | null;
+}
+
 export interface Platform {
   os: "windows" | "macos" | "linux";
   arch: "x64" | "arm64";
@@ -133,8 +146,14 @@ export const api = {
   addShimsToPath: () => invoke<string[]>("add_shims_to_path"),
   openLocation: (what: Location) => invoke<void>("open_location", { what }),
   setPorts: (http: number, mariadb: number) => invoke<void>("set_ports", { http, mariadb }),
+  mariadbInfo: () => invoke<MariadbInfo>("mariadb_info"),
+  createDatabase: (name: string) => invoke<void>("create_database", { name }),
   onInstallProgress: (cb: (p: InstallProgress) => void): Promise<UnlistenFn> =>
     listen<InstallProgress>("install-progress", (e) => cb(e.payload)),
+  onInstallFinished: (cb: (f: InstallFinished) => void): Promise<UnlistenFn> =>
+    listen<InstallFinished>("install-finished", (e) => cb(e.payload)),
+  /** Installs running in the backend right now (they survive switching pages). */
+  activeInstalls: () => invoke<InstallProgress[]>("active_installs"),
 };
 
 /** Command errors arrive from Rust as serialized strings. */

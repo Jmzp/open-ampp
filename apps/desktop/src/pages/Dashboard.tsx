@@ -9,6 +9,7 @@ import {
   type ServiceStatus,
   type Tool,
 } from "../lib/api";
+import { DatabasePanel } from "../components/DatabasePanel";
 import { t } from "../lib/i18n";
 import { usePolling } from "../lib/usePolling";
 
@@ -123,6 +124,8 @@ export function Dashboard({ state, onManage }: { state: AppState; onManage: () =
           );
         })}
       </section>
+
+      <DatabasePanel state={state} running={!!status("mariadb")?.running} />
     </>
   );
 }

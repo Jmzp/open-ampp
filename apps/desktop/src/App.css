@@ -125,3 +125,18 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0
 /* Update banner */
 .banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding: 10px 14px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); font-size: 0.9rem; }
 .save-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; }
+.tab-count { display: inline-block; min-width: 18px; margin-left: 6px; padding: 0 5px; border-radius: 999px; background: var(--ok); color: white; font-size: 0.72rem; line-height: 18px; animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.55; } }
+
+/* Database panel */
+.db-layout { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+.creds { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 10px; }
+.cred { display: grid; grid-template-columns: 90px 1fr; align-items: center; gap: 8px; }
+.cred dd { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.cred code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+button.copy { width: auto; padding: 2px 8px; font-size: 0.75rem; font-weight: 500; }
+.db-list { list-style: none; margin: 4px 0 12px; padding: 0; }
+.db-list li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--border); }
+.db-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; margin-right: auto; }
+.db-create { display: flex; gap: 8px; }
+.db-create input { flex: 1; }

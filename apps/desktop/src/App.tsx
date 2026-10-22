@@ -33,6 +33,27 @@ function App() {
     api.getPaths().then((p) => setRoot(p.root));
   }, [reload]);
 
+  // Running installs, shown as a counter on the Versions tab from any page.
+  const [installs, setInstalls] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    const id = (tool: string, version: string) => `${tool}@${version}`;
+    api.activeInstalls().then((running) => setInstalls(new Set(running.map((p) => id(p.tool, p.version)))));
+    const unlisten = api.onInstallProgress((p) =>
+      setInstalls((prev) => (prev.has(id(p.tool, p.version)) ? prev : new Set(prev).add(id(p.tool, p.version)))),
+    );
+    const unlistenFinished = api.onInstallFinished((f) =>
+      setInstalls((prev) => {
+        const next = new Set(prev);
+        next.delete(id(f.tool, f.version));
+        return next;
+      }),
+    );
+    return () => {
+      unlisten.then((f) => f());
+      unlistenFinished.then((f) => f());
+    };
+  }, []);
+
   return (
     <main className="app">
       <header className="top">
@@ -47,6 +68,7 @@ function App() {
           {PAGES.map((id) => (
             <button key={id} className={page === id ? "tab active" : "tab"} onClick={() => setPage(id)}>
               {t.tabs[id]}
+              {id === "versions" && installs.size > 0 && <span className="tab-count">{installs.size}</span>}
             </button>
           ))}
         </nav>

@@ -1,6 +1,6 @@
 mod tray;
 
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::sync::{Mutex, RwLock};
 
@@ -24,8 +24,9 @@ struct AppState {
     manifest: RwLock<Manifest>,
     state: Mutex<State>,
     supervisor: Supervisor,
-    /// Installs in progress, so the same one is not started twice.
-    installing: Mutex<HashSet<(Tool, String)>>,
+    /// Installs in progress with their latest progress. It is the source of truth for the UI, which
+    /// may be showing another page (or be reloaded) while a download runs.
+    installing: Mutex<HashMap<(Tool, String), installer::Progress>>,
 }
 
 impl AppState {
@@ -171,20 +172,54 @@ async fn install_package(handle: AppHandle, tool: Tool, version: String) -> Comm
     let pkg = app.manifest().find(tool, &version, platform)?.clone();
 
     let key = (tool, version.clone());
-    if !app.installing.lock().expect("installing lock").insert(key.clone()) {
-        return Err(CommandError(tr!("{tool} {version} ya se está instalando", "{tool} {version} is already being installed")));
+    {
+        let mut installing = app.installing.lock().expect("installing lock");
+        if installing.contains_key(&key) {
+            return Err(CommandError(tr!(
+                "{tool} {version} ya se está instalando",
+                "{tool} {version} is already being installed"
+            )));
+        }
+        let start = installer::Progress {
+            tool,
+            version: version.clone(),
+            phase: installer::Phase::Downloading,
+            downloaded: 0,
+            total: pkg.size,
+        };
+        installing.insert(key.clone(), start);
     }
     let result = installer::install(&app.paths, &pkg, |p| {
+        app.installing.lock().expect("installing lock").insert(key.clone(), p.clone());
         let _ = handle.emit("install-progress", p);
     })
-    .await;
+    .await
+    .map_err(CommandError::from)
+    .and_then(|_| {
+        app.update(|s| {
+            s.mark_installed(tool, &version);
+            Ok(())
+        })
+    });
     app.installing.lock().expect("installing lock").remove(&key);
 
-    result?;
-    app.update(|s| {
-        s.mark_installed(tool, &version);
-        Ok(())
-    })
+    let error = result.as_ref().err().map(|e| e.0.clone());
+    let _ = handle.emit("install-finished", InstallFinished { tool, version, error });
+    result
+}
+
+/// Sent when an install ends, so the UI can catch up even if it was not watching.
+#[derive(Clone, Serialize)]
+struct InstallFinished {
+    tool: Tool,
+    version: String,
+    error: Option<String>,
+}
+
+/// Installs running right now, with their latest progress.
+#[tauri::command]
+fn active_installs(app: tauri::State<AppState>) -> Vec<installer::Progress> {
+    app.installing.lock().expect("installing lock").values().cloned().collect()
 }
 
 #[tauri::command]
@@ -455,6 +490,28 @@ fn open_location(handle: AppHandle, what: String) -> CommandResult<()> {
     handle.opener().open_path(path.display().to_string(), None::<&str>).map_err(|e| CommandError(e.to_string()))
 }
 
+#[derive(Serialize)]
+struct MariadbInfo {
+    connection: ampp_core::db::Connection,
+    /// `None` while MariaDB is not running.
+    databases: Option<Vec<ampp_core::db::Database>>,
+}
+
+/// Connection details and, if the server is up, its databases.
+#[tauri::command]
+async fn mariadb_info(app: tauri::State<'_, AppState>) -> CommandResult<MariadbInfo> {
+    let state = app.snapshot();
+    let connection = ampp_core::db::connection(&app.paths, &state);
+    let running = app.supervisor.status().await.iter().any(|s| s.tool == Tool::Mariadb && s.running);
+    let databases = if running { Some(ampp_core::db::list(&app.paths, &state).await?) } else { None };
+    Ok(MariadbInfo { connection, databases })
+}
+
+#[tauri::command]
+async fn create_database(app: tauri::State<'_, AppState>, name: String) -> CommandResult<()> {
+    Ok(ampp_core::db::create(&app.paths, &app.snapshot(), &name).await?)
+}
+
 /// Language for Rust-side messages, so the UI can match it.
 #[tauri::command]
 fn get_lang() -> ampp_core::i18n::Lang {
@@ -495,7 +552,7 @@ pub fn run() {
                 manifest: RwLock::new(Manifest::bundled()),
                 state: Mutex::new(state),
                 supervisor,
-                installing: Mutex::new(HashSet::new()),
+                installing: Mutex::new(HashMap::new()),
             });
             tray::create(app.handle())?;
 
@@ -521,6 +578,7 @@ pub fn run() {
             get_state,
             get_catalog,
             install_package,
+            active_installs,
             uninstall_package,
             upgrade_package,
             set_active,
@@ -540,6 +598,8 @@ pub fn run() {
             open_location,
             set_ports,
             get_lang,
+            mariadb_info,
+            create_database,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

@@ -93,6 +93,14 @@ async fn full_stack_serves_php_and_mariadb() {
             let stdout = String::from_utf8_lossy(&out.stdout);
             eprintln!("SELECT VERSION() → {stdout}{}", String::from_utf8_lossy(&out.stderr));
             assert!(stdout.starts_with(&version), "{stdout}");
+
+            // Database management as the app does it: create one and find it in the list.
+            ampp_core::db::create(&paths, &state, "open_ampp_test").await.unwrap();
+            let dbs = ampp_core::db::list(&paths, &state).await.unwrap();
+            eprintln!("databases → {:?}", dbs.iter().map(|d| (&d.name, d.system)).collect::<Vec<_>>());
+            assert!(dbs.iter().any(|d| d.name == "open_ampp_test" && !d.system));
+            assert!(dbs.iter().any(|d| d.name == "mysql" && d.system));
+            assert!(ampp_core::db::create(&paths, &state, "bad`name").await.is_err());
         }
 
         if full {
