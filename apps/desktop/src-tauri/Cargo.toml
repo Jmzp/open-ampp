@@ -1,0 +1,21 @@
+[package]
+name = "open-ampp"
+description = "OPEN_AMPP: entorno local Apache + MariaDB + PHP multiversión"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lib]
+# El sufijo `_lib` evita conflicto con el nombre del binario en Windows (cargo#8519).
+name = "open_ampp_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+ampp-core.workspace = true
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde.workspace = true
+serde_json.workspace = true
