@@ -1,0 +1,61 @@
+name: Bug report
+description: Something does not work as expected (English or Spanish are fine).
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this! Security problems go through [private reporting](https://github.com/Jmzp/open-ampp/security/advisories/new) instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you do, what did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Install PHP 8.3 from Versions
+        2. Start all services
+        3. Open http://localhost:8080/phpmyadmin/
+  - type: input
+    id: version
+    attributes:
+      label: Open AMPP version
+      description: From `ampp --version`, or the installer file name.
+      placeholder: "0.1.2"
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11 (x64)
+        - Windows 10 (x64)
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux (x64)
+        - Linux (arm64)
+    validations:
+      required: true
+  - type: input
+    id: os_details
+    attributes:
+      label: OS version or distro
+      placeholder: "Ubuntu 24.04, macOS 15.1, Windows 11 24H2…"
+  - type: input
+    id: stack
+    attributes:
+      label: Active versions
+      description: Apache, PHP and MariaDB versions involved (`ampp status`).
+      placeholder: "Apache 2.4.69, PHP 8.3.36, MariaDB 11.4.13"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The relevant part of the Logs tab (or the files in the `logs/` folder). Remove anything private.
+      render: text

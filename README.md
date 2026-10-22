@@ -174,7 +174,7 @@ state.json                  installed/active versions, ports and PHP settings
 ## 🧪 Development and tests
 
 ```sh
-cargo test -p ampp-core                                   # unit tests (fast, offline)
+cargo test -p ampp-core -p ampp-cli                       # unit, supervisor and CLI tests (fast, offline)
 cargo test -p ampp-core -- --ignored                      # downloads a real PHP, starts it, sends a FastCGI request
 cd apps/desktop && npm run build                          # builds the UI
 OPEN_AMPP_LANG=en npm run tauri dev                       # force the Rust-side language (es or en)
@@ -224,4 +224,15 @@ Pushing a `v*` tag runs the **Release** workflow: it builds the installers for e
 
 ## 🤝 Contributing
 
-Contributions are welcome! Open an issue to report a problem or suggest an idea, or send a pull request. Before sending it, make sure `cargo test -p ampp-core` and `npm run build` in `apps/desktop` pass. Code comments are written in English; user-facing text lives in both languages (`apps/desktop/src/lib/i18n.ts` and the `tr!` macro in Rust).
+Contributions are very welcome, in English or Spanish: bug reports, tests on real hardware, migration stories from XAMPP/MAMP/Laragon, translations and pull requests.
+
+- 📘 **[Contributing guide](CONTRIBUTING.md)**: setup, where things live, tests and conventions.
+- 🐞 **[Report a bug](https://github.com/Jmzp/open-ampp/issues/new?template=bug_report.yml)** or **[suggest an idea](https://github.com/Jmzp/open-ampp/issues/new?template=feature_request.yml)**.
+- 🌱 **[Good first issues](https://github.com/Jmzp/open-ampp/labels/good%20first%20issue)** to get started.
+- 🔒 Security problems: please report them privately ([SECURITY.md](SECURITY.md)).
+
+Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+
+## 📄 License
+
+[MIT](LICENSE) © Jorge Zapata and the Open AMPP contributors. Apache, PHP, MariaDB, phpMyAdmin and Composer are distributed under their own licenses.

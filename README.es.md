@@ -174,7 +174,7 @@ state.json                      versiones instaladas/activas, puertos y ajustes 
 ## 🧪 Desarrollo y pruebas
 
 ```sh
-cargo test -p ampp-core                                   # tests unitarios (rápidos, sin red)
+cargo test -p ampp-core -p ampp-cli                       # tests unitarios, del supervisor y del CLI (rápidos, sin red)
 cargo test -p ampp-core -- --ignored                      # descarga PHP real, lo arranca y le hace una petición FastCGI
 cd apps/desktop && npm run build                          # compila la UI
 OPEN_AMPP_LANG=en npm run tauri dev                       # fuerza el idioma del lado de Rust (es o en)
@@ -224,4 +224,15 @@ Al subir un tag `v*` corre el workflow **Release**: compila los instaladores de 
 
 ## 🤝 Contribuir
 
-¡Las contribuciones son bienvenidas! Abre un issue para reportar un problema o proponer una idea, o envía un pull request. Antes de enviarlo, verifica que pasen `cargo test -p ampp-core` y `npm run build` en `apps/desktop`. Los comentarios del código se escriben en inglés; los textos que ve el usuario están en ambos idiomas (`apps/desktop/src/lib/i18n.ts` y la macro `tr!` en Rust).
+Las contribuciones son muy bienvenidas, en español o en inglés: reportes de errores, pruebas en equipos reales, experiencias migrando desde XAMPP/MAMP/Laragon, traducciones y pull requests.
+
+- 📘 **[Guía de contribución](CONTRIBUTING.md)** (en inglés): instalación, dónde está cada cosa, tests y convenciones.
+- 🐞 **[Reportar un error](https://github.com/Jmzp/open-ampp/issues/new?template=bug_report.yml)** o **[proponer una idea](https://github.com/Jmzp/open-ampp/issues/new?template=feature_request.yml)**.
+- 🌱 **[Issues para empezar](https://github.com/Jmzp/open-ampp/labels/good%20first%20issue)** (`good first issue`).
+- 🔒 Problemas de seguridad: repórtalos en privado ([SECURITY.md](SECURITY.md)).
+
+Quienes participan siguen el [Código de conducta](CODE_OF_CONDUCT.md).
+
+## 📄 Licencia
+
+[MIT](LICENSE) © Jorge Zapata y los contribuidores de Open AMPP. Apache, PHP, MariaDB, phpMyAdmin y Composer se distribuyen bajo sus propias licencias.

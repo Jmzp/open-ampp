@@ -1,0 +1,25 @@
+name: Feature request or migration feedback
+description: An idea, something missing compared to XAMPP/MAMP/Laragon/Docker, or how your migration went.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to do?
+      description: The problem or workflow behind the request. Coming from another tool? Tell us how it worked there.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What would you like Open AMPP to do?
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Workarounds or alternatives you considered
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Contributing
+      options:
+        - label: I would like to work on this myself.

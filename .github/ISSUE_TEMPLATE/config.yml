@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/Jmzp/open-ampp/security/advisories/new
+    about: Please report security problems privately, not in a public issue.
+  - name: Contributing guide
+    url: https://github.com/Jmzp/open-ampp/blob/main/CONTRIBUTING.md
+    about: How to set up the project, run the tests and send a pull request.
