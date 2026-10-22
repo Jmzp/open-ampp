@@ -44,8 +44,15 @@ cd "$SPC_DIR"
 log "PHP $VERSION: checking the toolchain"
 ./spc doctor --auto-fix
 log "PHP $VERSION: downloading sources"
-./spc download --with-php="$VERSION" --for-extensions="$PHP_EXTENSIONS" --for-libs="$PHP_EXTRA_LIBS" \
-  --prefer-pre-built --retry=3
+# spc reads release metadata from the GitHub API, which rejects bursts of requests (e.g. many CI
+# jobs starting together), so retry with a growing pause.
+for attempt in 1 2 3 4 5; do
+  ./spc download --with-php="$VERSION" --for-extensions="$PHP_EXTENSIONS" --for-libs="$PHP_EXTRA_LIBS" \
+    --prefer-pre-built --retry=3 && break
+  [ "$attempt" = 5 ] && die "could not download the PHP $VERSION sources"
+  log "download failed (attempt $attempt); retrying in $((attempt * 45))s"
+  sleep $((attempt * 45))
+done
 log "PHP $VERSION: building (this takes a while)"
 ./spc build "$PHP_EXTENSIONS" --with-libs="$PHP_EXTRA_LIBS" --build-cli --build-fpm
 

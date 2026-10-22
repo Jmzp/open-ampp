@@ -79,6 +79,8 @@ jobs:
     if: github.event_name == 'schedule' || inputs.what == 'all' || inputs.what == 'php'
     strategy:
       fail-fast: false
+      # Fewer simultaneous jobs keeps static-php-cli under GitHub's API burst limits.
+      max-parallel: 6
       matrix:
         # Each minor resolves to its latest patch release at build time (see build-php.sh).
         version: ["8.2", "8.3", "8.4"]
