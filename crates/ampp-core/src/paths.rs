@@ -42,9 +42,9 @@ pub struct AppPaths {
 }
 
 impl AppPaths {
-    /// Directorio de datos estándar del SO (p. ej. `~/Library/Application Support/dev.openampp.app`).
+    /// Directorio de datos estándar del SO (p. ej. `~/Library/Application Support/dev.openampp.open-ampp`).
     pub fn from_system() -> Result<Self> {
-        let dirs = directories::ProjectDirs::from("dev", "openampp", "app").ok_or(Error::NoDataDir)?;
+        let dirs = directories::ProjectDirs::from("dev", "openampp", "open-ampp").ok_or(Error::NoDataDir)?;
         Ok(Self::new(dirs.data_dir()))
     }
 
