@@ -121,13 +121,22 @@ jobs:
       - name: Refresh the catalog
         env:
           GH_TOKEN: ${{ github.token }}
+        # Built from the newest main (not the commit the run started on) and retried, since main
+        # may move while the builds run.
         run: |
-          python3 catalog/generate.py
-          if git diff --quiet catalog/manifest.json; then
-            echo "catalog unchanged"
-          else
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git commit -am "Catalog: refresh published binaries"
-            git push
-          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          for attempt in 1 2 3; do
+            git fetch -q origin main
+            git checkout -q -B main origin/main
+            python3 catalog/generate.py
+            if git diff --quiet catalog/manifest.json; then
+              echo "catalog unchanged"
+              exit 0
+            fi
+            git commit -qam "Catalog: refresh published binaries"
+            git push -q origin main && exit 0
+            echo "main moved; retrying"
+            sleep 10
+          done
+          exit 1
