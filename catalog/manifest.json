@@ -1,0 +1,225 @@
+{
+  "schema": 1,
+  "packages": [
+    {
+      "tool": "apache",
+      "version": "2.4.69",
+      "os": "windows",
+      "arch": "x64",
+      "url": "https://www.apachelounge.com/download/VS18/binaries/httpd-2.4.69-261002-Win64-VS18.zip",
+      "sha256": "ca272e0b75abad78b1e4029a0753b20ff2232d2d857e8eebeea5d469c5776977",
+      "archive": "zip",
+      "size": null
+    },
+    {
+      "tool": "mariadb",
+      "version": "10.11.19",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://archive.mariadb.org/mariadb-10.11.19/bintar-linux-systemd-x86_64/mariadb-10.11.19-linux-systemd-x86_64.tar.gz",
+      "sha256": "7efb257927f31f4422f496246b32590d0b7617f3d9dd900e575de761b302d919",
+      "archive": "tar-gz",
+      "size": null
+    },
+    {
+      "tool": "mariadb",
+      "version": "11.4.13",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://archive.mariadb.org/mariadb-11.4.13/bintar-linux-systemd-x86_64/mariadb-11.4.13-linux-systemd-x86_64.tar.gz",
+      "sha256": "3cebf63914df3154b7cb6d548337eb2be42c773aeb641110446b72e2746cfed7",
+      "archive": "tar-gz",
+      "size": null
+    },
+    {
+      "tool": "mariadb",
+      "version": "11.8.9",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://archive.mariadb.org/mariadb-11.8.9/bintar-linux-systemd-x86_64/mariadb-11.8.9-linux-systemd-x86_64.tar.gz",
+      "sha256": "32f8871a2aa38b36aa418b7f4abc6fc0c6ef1ba5a45798cacb2afa52c8a6113b",
+      "archive": "tar-gz",
+      "size": null
+    },
+    {
+      "tool": "mariadb",
+      "version": "10.11.19",
+      "os": "windows",
+      "arch": "x64",
+      "url": "https://archive.mariadb.org/mariadb-10.11.19/winx64-packages/mariadb-10.11.19-winx64.zip",
+      "sha256": "398ea30e5036010bbebe01d2b1804280424dcc2626e36d8e95155c04d25a0490",
+      "archive": "zip",
+      "size": null
+    },
+    {
+      "tool": "mariadb",
+      "version": "11.4.13",
+      "os": "windows",
+      "arch": "x64",
+      "url": "https://archive.mariadb.org/mariadb-11.4.13/winx64-packages/mariadb-11.4.13-winx64.zip",
+      "sha256": "d62986d433eeebfde218560b276103831604a61e929e87f1a17f5aebd80257e2",
+      "archive": "zip",
+      "size": null
+    },
+    {
+      "tool": "mariadb",
+      "version": "11.8.9",
+      "os": "windows",
+      "arch": "x64",
+      "url": "https://archive.mariadb.org/mariadb-11.8.9/winx64-packages/mariadb-11.8.9-winx64.zip",
+      "sha256": "830c46727d9278eae212ae3eca44eeb9e71b2a68704e95f344a64fba7b1963f5",
+      "archive": "zip",
+      "size": null
+    },
+    {
+      "tool": "php",
+      "version": "8.2.32",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://dl.static-php.dev/static-php-cli/common/php-8.2.32-fpm-linux-aarch64.tar.gz",
+      "sha256": "8479a443ee13801a2c8bbc5851ae267d3c9164f71d8262815c3f603d576f5bab",
+      "archive": "tar-gz",
+      "size": 12099919
+    },
+    {
+      "tool": "php",
+      "version": "8.3.32",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://dl.static-php.dev/static-php-cli/common/php-8.3.32-fpm-linux-aarch64.tar.gz",
+      "sha256": "64685282cd98d89703fce3f25fe265ba72a3cf5c71ba828e516b1c89e073134f",
+      "archive": "tar-gz",
+      "size": 12173307
+    },
+    {
+      "tool": "php",
+      "version": "8.4.23",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://dl.static-php.dev/static-php-cli/common/php-8.4.23-fpm-linux-aarch64.tar.gz",
+      "sha256": "dcd8795cf91f8f88e6b383efab8569dffa469891cf2d90225dcca9711f8115c4",
+      "archive": "tar-gz",
+      "size": 12790780
+    },
+    {
+      "tool": "php",
+      "version": "8.2.32",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://dl.static-php.dev/static-php-cli/common/php-8.2.32-fpm-linux-x86_64.tar.gz",
+      "sha256": "6e14e116836f9eab42451619fb4d68117ecea4bc4b1efd7011aaee914033f800",
+      "archive": "tar-gz",
+      "size": 11690460
+    },
+    {
+      "tool": "php",
+      "version": "8.3.32",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://dl.static-php.dev/static-php-cli/common/php-8.3.32-fpm-linux-x86_64.tar.gz",
+      "sha256": "78d9ac9d52fedacc33d428196d0e5e9ace8ac010091c334daae85a669370f861",
+      "archive": "tar-gz",
+      "size": 11769021
+    },
+    {
+      "tool": "php",
+      "version": "8.4.23",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://dl.static-php.dev/static-php-cli/common/php-8.4.23-fpm-linux-x86_64.tar.gz",
+      "sha256": "baa5ddcf2f9aabff78848cb6851bb104a4c0873347b8ee65eb9bcf4760a4d31a",
+      "archive": "tar-gz",
+      "size": 12398139
+    },
+    {
+      "tool": "php",
+      "version": "8.2.32",
+      "os": "macos",
+      "arch": "arm64",
+      "url": "https://dl.static-php.dev/static-php-cli/common/php-8.2.32-fpm-macos-aarch64.tar.gz",
+      "sha256": "16cdb8ab5c8003765f779eecf51d4bd06a527a30a28bc1fab31f4096b6b6c8b0",
+      "archive": "tar-gz",
+      "size": 13612976
+    },
+    {
+      "tool": "php",
+      "version": "8.3.32",
+      "os": "macos",
+      "arch": "arm64",
+      "url": "https://dl.static-php.dev/static-php-cli/common/php-8.3.32-fpm-macos-aarch64.tar.gz",
+      "sha256": "3164721ae2dd6615048180c44f63bede09ba42060c73d2027af8150d2ebbd0f6",
+      "archive": "tar-gz",
+      "size": 13711559
+    },
+    {
+      "tool": "php",
+      "version": "8.4.23",
+      "os": "macos",
+      "arch": "arm64",
+      "url": "https://dl.static-php.dev/static-php-cli/common/php-8.4.23-fpm-macos-aarch64.tar.gz",
+      "sha256": "038ea93f7ec17d125ddb09c68d099e72d68c5ee4c235048fe5fe2f720de6484f",
+      "archive": "tar-gz",
+      "size": 14457789
+    },
+    {
+      "tool": "php",
+      "version": "8.2.32",
+      "os": "macos",
+      "arch": "x64",
+      "url": "https://dl.static-php.dev/static-php-cli/common/php-8.2.32-fpm-macos-x86_64.tar.gz",
+      "sha256": "d3b83a6f08526cf3a64bcacb8d09136f164487d5285e26d1d9fa12d65c503487",
+      "archive": "tar-gz",
+      "size": 14030875
+    },
+    {
+      "tool": "php",
+      "version": "8.3.32",
+      "os": "macos",
+      "arch": "x64",
+      "url": "https://dl.static-php.dev/static-php-cli/common/php-8.3.32-fpm-macos-x86_64.tar.gz",
+      "sha256": "b8d2367b7c70a776d27fdc3d9b128c3a193e5cfd583bcdb7f484ebad601777e3",
+      "archive": "tar-gz",
+      "size": 14134449
+    },
+    {
+      "tool": "php",
+      "version": "8.4.23",
+      "os": "macos",
+      "arch": "x64",
+      "url": "https://dl.static-php.dev/static-php-cli/common/php-8.4.23-fpm-macos-x86_64.tar.gz",
+      "sha256": "6d0a0ffd4dae2672037b599dbca3c2288db3f96efb2f29e0102bbdb1be177c5f",
+      "archive": "tar-gz",
+      "size": 14889885
+    },
+    {
+      "tool": "php",
+      "version": "8.2.35",
+      "os": "windows",
+      "arch": "x64",
+      "url": "https://windows.php.net/downloads/releases/php-8.2.35-nts-Win32-vs16-x64.zip",
+      "sha256": "798ffa4b9ce22a820d57048e9695df7245bf917ed067917f256942a10918a8cc",
+      "archive": "zip",
+      "size": null
+    },
+    {
+      "tool": "php",
+      "version": "8.3.36",
+      "os": "windows",
+      "arch": "x64",
+      "url": "https://windows.php.net/downloads/releases/php-8.3.36-nts-Win32-vs16-x64.zip",
+      "sha256": "3c9242622c7402b47c38d2ec2ed779cef3a290fd6f2bde6c35f9c482699e7900",
+      "archive": "zip",
+      "size": null
+    },
+    {
+      "tool": "php",
+      "version": "8.4.27",
+      "os": "windows",
+      "arch": "x64",
+      "url": "https://windows.php.net/downloads/releases/php-8.4.27-nts-Win32-vs17-x64.zip",
+      "sha256": "93bd8a815a52156606fb906d0573437908c61f96e2cc52c03a51e36a41bf5236",
+      "archive": "zip",
+      "size": null
+    }
+  ]
+}

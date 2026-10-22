@@ -1,58 +1,56 @@
-import { useEffect, useState } from "react";
-import { api, type AppState, type Tool } from "./lib/api";
+import { useCallback, useEffect, useState } from "react";
+import { api, errorMessage, type AppState } from "./lib/api";
+import { Dashboard } from "./pages/Dashboard";
+import { Versions } from "./pages/Versions";
 import "./App.css";
 
-const SERVICES: { tool: Tool; label: string; port: (s: AppState) => number }[] = [
-  { tool: "apache", label: "Apache", port: (s) => s.ports.http },
-  { tool: "php", label: "PHP", port: (s) => s.ports.php_fcgi_base },
-  { tool: "mariadb", label: "MariaDB", port: (s) => s.ports.mariadb },
+type Page = "dashboard" | "versions";
+
+const PAGES: { id: Page; label: string }[] = [
+  { id: "dashboard", label: "Panel" },
+  { id: "versions", label: "Versiones" },
 ];
 
 function App() {
+  const [page, setPage] = useState<Page>("dashboard");
   const [state, setState] = useState<AppState | null>(null);
   const [root, setRoot] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const reload = useCallback(
+    () =>
+      api
+        .getState()
+        .then(setState)
+        .catch((e) => setError(errorMessage(e))),
+    [],
+  );
+
   useEffect(() => {
-    Promise.all([api.getState(), api.getPaths()])
-      .then(([s, p]) => {
-        setState(s);
-        setRoot(p.root);
-      })
-      .catch((e) => setError(String(e)));
-  }, []);
+    reload();
+    api.getPaths().then((p) => setRoot(p.root));
+  }, [reload]);
 
   return (
     <main className="app">
-      <header>
-        <h1>OPEN_AMPP</h1>
-        <p className="muted">Apache · MariaDB · PHP para desarrollo local</p>
+      <header className="top">
+        <div>
+          <h1>OPEN_AMPP</h1>
+          <p className="muted">Apache · MariaDB · PHP para desarrollo local</p>
+        </div>
+        <nav className="tabs">
+          {PAGES.map(({ id, label }) => (
+            <button key={id} className={page === id ? "tab active" : "tab"} onClick={() => setPage(id)}>
+              {label}
+            </button>
+          ))}
+        </nav>
       </header>
 
       {error && <p className="error">{error}</p>}
 
-      {state && (
-        <section className="grid">
-          {SERVICES.map(({ tool, label, port }) => {
-            const version = state.active[tool];
-            return (
-              <article key={tool} className="card">
-                <div className="card-head">
-                  <span className="dot stopped" aria-label="detenido" />
-                  <h2>{label}</h2>
-                </div>
-                <dl>
-                  <dt>Versión</dt>
-                  <dd>{version ?? "No instalada"}</dd>
-                  <dt>Puerto</dt>
-                  <dd>{port(state)}</dd>
-                </dl>
-                <button disabled={!version}>Iniciar</button>
-              </article>
-            );
-          })}
-        </section>
-      )}
+      {page === "dashboard" && state && <Dashboard state={state} onManage={() => setPage("versions")} />}
+      {page === "versions" && <Versions onChanged={reload} />}
 
       {root && <footer className="muted">Datos en {root}</footer>}
     </main>

@@ -7,9 +7,18 @@ description = "Motor de OPEN_AMPP: catálogo, instalación y gestión de servici
 
 [dependencies]
 directories = "6"
+flate2 = "1"
+futures-util = "0.3"
+hex = "0.4"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
 serde.workspace = true
 serde_json.workspace = true
+sha2 = "0.10"
+tar = "0.4"
 thiserror.workspace = true
+tokio = { version = "1", features = ["fs", "io-util", "rt"] }
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

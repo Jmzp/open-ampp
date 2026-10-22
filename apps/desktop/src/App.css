@@ -41,3 +41,32 @@ dd { margin: 0; }
 button { width: 100%; padding: 8px; border: none; border-radius: 8px; background: var(--accent); color: white; font-weight: 600; cursor: pointer; }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 footer { font-size: 0.8rem; }
+
+/* Navegación */
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
+.tab { width: auto; background: transparent; color: var(--muted); padding: 6px 14px; }
+.tab.active { background: var(--accent); color: white; }
+
+/* Variantes de botón */
+button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+button.ghost { background: transparent; color: var(--muted); }
+button.ghost:hover:not(:disabled) { color: var(--danger); }
+
+/* Versiones */
+.versions { display: flex; flex-direction: column; gap: 16px; margin: 24px 0; }
+.rows { list-style: none; margin: 12px 0 0; padding: 0; }
+.row { display: grid; grid-template-columns: 90px 1fr auto; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); }
+.version { font-variant-numeric: tabular-nums; font-weight: 600; }
+.actions { display: flex; gap: 6px; }
+.actions button { width: auto; padding: 6px 12px; }
+.badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); font-weight: 600; }
+.muted-badge { background: color-mix(in srgb, var(--off) 20%, transparent); color: var(--muted); }
+
+/* Progreso */
+.progress { display: flex; flex-direction: column; gap: 4px; min-width: 200px; }
+.progress-label { font-size: 0.8rem; color: var(--muted); }
+.progress-track { height: 6px; background: var(--border); border-radius: 999px; overflow: hidden; }
+.progress-fill { display: block; height: 100%; background: var(--accent); transition: width 0.2s; }
+.progress-fill.indeterminate { width: 40%; animation: slide 1s ease-in-out infinite; }
+@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }

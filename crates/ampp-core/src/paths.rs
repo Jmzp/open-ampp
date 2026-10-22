@@ -76,6 +76,11 @@ impl AppPaths {
         self.root.join("run")
     }
 
+    /// Descargas temporales en curso.
+    pub fn downloads(&self) -> PathBuf {
+        self.root.join("downloads")
+    }
+
     pub fn certs(&self) -> PathBuf {
         self.root.join("certs")
     }

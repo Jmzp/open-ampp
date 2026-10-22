@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
+use crate::catalog::compare_versions;
 use crate::error::{Error, IoContext, Result};
 use crate::paths::Tool;
 
@@ -69,6 +70,41 @@ impl State {
         }
     }
 
+    /// Registra una versión instalada; si no hay versión activa, pasa a serlo.
+    pub fn mark_installed(&mut self, tool: Tool, version: &str) {
+        let versions = self.installed.entry(tool).or_default();
+        if !versions.iter().any(|v| v == version) {
+            versions.push(version.to_string());
+            versions.sort_by(|a, b| compare_versions(b, a));
+        }
+        self.active.entry(tool).or_insert_with(|| version.to_string());
+    }
+
+    /// Quita una versión; si era la activa, activa la más reciente que quede.
+    pub fn mark_uninstalled(&mut self, tool: Tool, version: &str) {
+        let versions = self.installed.entry(tool).or_default();
+        versions.retain(|v| v != version);
+        let next = versions.first().cloned();
+        if versions.is_empty() {
+            self.installed.remove(&tool);
+        }
+        if self.active.get(&tool).is_some_and(|v| v == version) {
+            match next {
+                Some(v) => self.active.insert(tool, v),
+                None => self.active.remove(&tool),
+            };
+        }
+    }
+
+    pub fn set_active(&mut self, tool: Tool, version: &str) -> Result<()> {
+        let installed = self.installed.get(&tool).is_some_and(|vs| vs.iter().any(|v| v == version));
+        if !installed {
+            return Err(Error::NotInstalled { tool, version: version.to_string() });
+        }
+        self.active.insert(tool, version.to_string());
+        Ok(())
+    }
+
     /// Guarda de forma atómica (escribe a un temporal y renombra).
     pub fn save(&self, path: &Path) -> Result<()> {
         let json = serde_json::to_vec_pretty(self)
@@ -107,6 +143,24 @@ mod tests {
         });
         state.save(&path).unwrap();
         assert_eq!(State::load(&path).unwrap(), state);
+    }
+
+    #[test]
+    fn install_and_uninstall_keep_active_consistent() {
+        let mut state = State::default();
+        state.mark_installed(Tool::Php, "8.1.30");
+        state.mark_installed(Tool::Php, "8.3.12");
+        assert_eq!(state.installed[&Tool::Php], ["8.3.12", "8.1.30"]);
+        assert_eq!(state.active[&Tool::Php], "8.1.30", "la primera instalada queda activa");
+
+        state.set_active(Tool::Php, "8.3.12").unwrap();
+        assert!(state.set_active(Tool::Php, "7.4.0").is_err());
+
+        state.mark_uninstalled(Tool::Php, "8.3.12");
+        assert_eq!(state.active[&Tool::Php], "8.1.30");
+        state.mark_uninstalled(Tool::Php, "8.1.30");
+        assert!(!state.active.contains_key(&Tool::Php));
+        assert!(!state.installed.contains_key(&Tool::Php));
     }
 
     #[test]

@@ -24,9 +24,18 @@ npm run tauri dev                # abre la app
 ## Hoja de ruta
 
 1. ✅ Fundaciones: monorepo, `ampp-core` (rutas + `state.json`), scaffold Tauri/React, CI
-2. Catálogo + instalador (descarga, sha256, extracción)
+2. ✅ Catálogo + instalador (descarga, sha256, extracción, pantalla de Versiones)
 3. Servicios: Apache + PHP (FastCGI) + MariaDB, logs y health checks
 4. Pipelines de binarios portables para macOS/Linux
 5. Proyectos y vhosts (`*.localhost`, PHP por proyecto, SSL)
 6. Pulido: tray, editor de php.ini, Adminer, Composer, CLI
 7. Distribución: instaladores firmados y auto-update
+
+## Catálogo de versiones
+
+`catalog/manifest.json` se genera desde las fuentes oficiales (php.net, static-php-cli, mariadb.org, Apache Lounge):
+
+```sh
+python3 catalog/generate.py
+cargo test -p ampp-core --test real_install -- --ignored   # descarga real (requiere red)
+```
