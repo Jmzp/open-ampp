@@ -41,24 +41,87 @@ pub const PHP_WINDOWS_EXTENSIONS: &[&str] = &[
     "bz2", "curl", "fileinfo", "gettext", "mbstring", "exif", "mysqli", "pdo_mysql", "pdo_sqlite", "openssl", "ftp",
 ];
 
-const WELCOME_PHP: &str = r#"<!doctype html>
+/// Same palette as the desktop app (`apps/desktop/src/App.css`), with the logo as the only gradient.
+const WELCOME_PHP: &str = r##"<?php $projects = glob(__DIR__ . '/*', GLOB_ONLYDIR) ?: []; ?>
+<!doctype html>
+<html lang="{{lang}}">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Open AMPP</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 64px auto; padding: 0 16px; line-height: 1.55; color: #1b1f24; }
-  h1 { background: linear-gradient(135deg, #4f46e5, #7c3aed, #db2777); -webkit-background-clip: text; color: transparent; }
-  code { background: #f1f2f6; padding: 2px 6px; border-radius: 6px; }
-  a { color: #4f46e5; }
+  :root {
+    --bg: #f6f7f9; --surface: #fff; --text: #1b1f24; --muted: #6b7280; --border: #e3e6ea;
+    --accent: #6366f1; --ok: #16a34a;
+    color-scheme: light dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #111418; --surface: #1a1e24; --text: #e6e8eb; --muted: #9aa3ad; --border: #2a2f37; }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; padding: 64px 16px;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif; line-height: 1.55;
+    color: var(--text);
+    background: radial-gradient(900px 360px at 50% -120px, color-mix(in srgb, var(--accent) 12%, transparent), transparent), var(--bg);
+  }
+  main { max-width: 720px; margin: 0 auto; }
+  header { display: flex; align-items: center; gap: 16px; }
+  .logo { width: 56px; height: 56px; flex: none; }
+  h1 { margin: 0; font-size: 1.6rem; letter-spacing: -0.01em; }
+  .status { margin: 2px 0 0; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+  .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 20%, transparent); }
+  .serving { margin: 28px 0 0; color: var(--muted); }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em; background: color-mix(in srgb, var(--accent) 9%, transparent); padding: 2px 7px; border-radius: 6px; color: var(--text); word-break: break-all; }
+  h2 { margin: 36px 0 12px; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .card { display: block; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; color: inherit; text-decoration: none; transition: border-color .15s, transform .15s; }
+  .card:hover { border-color: var(--accent); transform: translateY(-1px); }
+  .card strong { display: block; color: var(--accent); }
+  .card span { font-size: 0.9rem; color: var(--muted); }
+  .projects { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .projects li + li { border-top: 1px solid var(--border); }
+  .projects a { display: block; padding: 10px 18px; color: var(--text); text-decoration: none; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.92rem; }
+  .projects a:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); color: var(--accent); }
+  footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 0.85rem; color: var(--muted); }
 </style>
-<h1>{{heading}}</h1>
-<p>{{serving}}</p>
-<ul>
-  <li><a href="info.php">phpinfo()</a></li>
-  <li><a href="/phpmyadmin/">phpMyAdmin</a></li>
-</ul>
-<p>{{hint}}</p>
-"#;
+<main>
+  <header>
+    <svg class="logo" viewBox="100 100 824 824" aria-hidden="true">
+      <defs>
+        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#4F46E5"/><stop offset="0.55" stop-color="#7C3AED"/><stop offset="1" stop-color="#DB2777"/>
+        </linearGradient>
+      </defs>
+      <rect x="100" y="100" width="824" height="824" rx="190" fill="url(#g)"/>
+      <g fill="#fff"><rect x="242" y="282" width="540" height="128" rx="40"/><rect x="242" y="448" width="540" height="128" rx="40" opacity=".94"/><rect x="242" y="614" width="540" height="128" rx="40" opacity=".88"/></g>
+      <circle cx="318" cy="346" r="24" fill="#F97316"/><circle cx="318" cy="512" r="24" fill="#6366F1"/><circle cx="318" cy="678" r="24" fill="#14B8A6"/>
+    </svg>
+    <div>
+      <h1>Open AMPP</h1>
+      <p class="status">{{heading}}</p>
+    </div>
+  </header>
+
+  <p class="serving">{{serving}}</p>
+
+  <h2>{{tools}}</h2>
+  <div class="grid">
+    <a class="card" href="info.php"><strong>phpinfo()</strong><span>{{phpinfo}}</span></a>
+    <a class="card" href="/phpmyadmin/"><strong>phpMyAdmin</strong><span>{{phpmyadmin}}</span></a>
+  </div>
+
+<?php if ($projects): ?>
+  <h2>{{projects}}</h2>
+  <ul class="projects">
+<?php foreach ($projects as $dir): $name = basename($dir); ?>
+    <li><a href="<?= rawurlencode($name) ?>/"><?= htmlspecialchars($name) ?>/</a></li>
+<?php endforeach; ?>
+  </ul>
+<?php endif; ?>
+
+  <footer>{{hint}}</footer>
+</main>
+"##;
 
 /// Replaces `{{key}}` with its value.
 pub fn render(template: &str, vars: &[(&str, &str)]) -> String {
@@ -91,7 +154,16 @@ pub fn ensure_docroot(paths: &AppPaths) -> Result<PathBuf> {
         );
         let page = render(
             WELCOME_PHP,
-            &[("heading", &tr!("Open AMPP funciona", "Open AMPP is running")), ("serving", &serving), ("hint", &hint)],
+            &[
+                ("lang", &tr!("es", "en")),
+                ("heading", &tr!("Todo funciona", "Everything is running")),
+                ("serving", &serving),
+                ("tools", &tr!("Herramientas", "Tools")),
+                ("phpinfo", &tr!("Configuración y extensiones de PHP", "PHP configuration and extensions")),
+                ("phpmyadmin", &tr!("Administra tus bases de datos MariaDB", "Manage your MariaDB databases")),
+                ("projects", &tr!("Tus proyectos", "Your projects")),
+                ("hint", &hint),
+            ],
         );
         write(&www.join("index.php"), &page)?;
         write(&www.join("info.php"), "<?php phpinfo();\n")?;
@@ -277,7 +349,7 @@ pub fn write_apache(
             &[
                 ("server_root", &slash(&inst.root)),
                 ("http_port", &http_port.to_string()),
-                ("php_port", &php_port.to_string()),
+                ("php_handler", &php_handler(php_port)),
                 ("run_dir", &slash(&paths.run())),
                 ("log_dir", &slash(&paths.logs())),
                 ("docroot", &slash(docroot)),
@@ -287,6 +359,21 @@ pub fn write_apache(
         ),
     )?;
     Ok(conf)
+}
+
+/// Body of the `.php` handler block. On Windows Apache appends the script path to the handler URL,
+/// so without a trailing slash the drive letter lands in the port (`127.0.0.1:9082C:`). With it,
+/// SCRIPT_FILENAME arrives as `proxy:fcgi://host:port/C:/…`, which php-cgi (unlike php-fpm)
+/// cannot open, so the prefix is stripped.
+fn php_handler(php_port: u16) -> String {
+    if cfg!(windows) {
+        format!(
+            "    SetHandler \"proxy:fcgi://127.0.0.1:{php_port}/\"\n    \
+             ProxyFCGISetEnvIf \"reqenv('SCRIPT_FILENAME') =~ m#^proxy:fcgi://[^/]+/(.*)$#\" SCRIPT_FILENAME \"$1\""
+        )
+    } else {
+        format!("    SetHandler \"proxy:fcgi://127.0.0.1:{php_port}\"")
+    }
 }
 
 /// MariaDB Unix socket path. macOS limits socket paths to 104 bytes, so the temp directory
@@ -342,6 +429,8 @@ mod tests {
         assert!(!text.contains("LoadModule rewrite_module"));
         assert!(text.contains("Listen 127.0.0.1:8080"));
         assert!(text.contains("proxy:fcgi://127.0.0.1:9083"));
+        // Windows needs the trailing slash so the drive letter does not end up in the port.
+        assert_eq!(text.contains("proxy:fcgi://127.0.0.1:9083/\""), cfg!(windows));
         assert!(text.contains("Alias /x"));
         assert!(!text.contains("{{"), "no placeholders may remain");
     }
