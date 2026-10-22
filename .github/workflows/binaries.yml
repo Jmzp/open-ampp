@@ -1,0 +1,110 @@
+name: Binarios
+
+# Compila Apache y MariaDB portables y re-empaqueta PHP para macOS y Linux (x64 y arm64),
+# y los publica como releases `bin-<herramienta>-<versión>`. Después hay que regenerar
+# el catálogo: `python3 catalog/generate.py`.
+on:
+  workflow_dispatch:
+    inputs:
+      what:
+        description: "Qué compilar"
+        type: choice
+        options: [all, apache, mariadb, php]
+        default: all
+
+permissions:
+  contents: write
+
+jobs:
+  apache:
+    if: inputs.what == 'all' || inputs.what == 'apache'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { runner: macos-15, container: "" }
+          - { runner: macos-15-intel, container: "" }
+          # AlmaLinux 8 (glibc 2.28) para que los binarios funcionen en distros no tan recientes.
+          - { runner: ubuntu-24.04, container: "almalinux:8" }
+          - { runner: ubuntu-24.04-arm, container: "almalinux:8" }
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencias (Linux)
+        if: runner.os == 'Linux'
+        run: binaries/linux-deps.sh
+      - name: Compilar
+        run: WORK="$RUNNER_TEMP/work" binaries/build-apache.sh dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apache-${{ matrix.runner }}
+          path: dist/*.tar.gz
+
+  mariadb:
+    if: inputs.what == 'all' || inputs.what == 'mariadb'
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["10.11.19", "11.4.13", "11.8.9"]
+        platform:
+          - { runner: macos-15, container: "" }
+          - { runner: macos-15-intel, container: "" }
+          - { runner: ubuntu-24.04, container: "almalinux:8" }
+          - { runner: ubuntu-24.04-arm, container: "almalinux:8" }
+    runs-on: ${{ matrix.platform.runner }}
+    container: ${{ matrix.platform.container }}
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Dependencias (Linux)
+        if: runner.os == 'Linux'
+        run: binaries/linux-deps.sh
+      - name: Dependencias (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install cmake bison
+          echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
+      - name: Compilar
+        run: WORK="$RUNNER_TEMP/work" binaries/build-mariadb.sh "${{ matrix.version }}" dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mariadb-${{ matrix.version }}-${{ matrix.platform.runner }}
+          path: dist/*.tar.gz
+
+  php:
+    if: inputs.what == 'all' || inputs.what == 'php'
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        version: ["8.2.32", "8.3.32", "8.4.23"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Re-empaquetar
+        run: |
+          for os in macos linux; do
+            for arch in x64 arm64; do
+              WORK="$RUNNER_TEMP/work" binaries/repack-php.sh "${{ matrix.version }}" dist "$os" "$arch"
+            done
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: php-${{ matrix.version }}
+          path: dist/*.tar.gz
+
+  publish:
+    needs: [apache, mariadb, php]
+    # Publica lo que se haya compilado aunque algún job se haya omitido o fallado.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publicar releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: binaries/publish.sh dist

@@ -4,7 +4,8 @@
   --text: #1b1f24;
   --muted: #6b7280;
   --border: #e3e6ea;
-  --accent: #2563eb;
+  --accent: #6366f1;
+  --accent-strong: linear-gradient(135deg, #4f46e5, #7c3aed);
   --ok: #16a34a;
   --off: #9ca3af;
   --danger: #dc2626;
@@ -38,7 +39,7 @@ h1 { margin: 0; font-size: 1.6rem; }
 dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 14px 0; }
 dt { color: var(--muted); }
 dd { margin: 0; }
-button { width: 100%; padding: 8px; border: none; border-radius: 8px; background: var(--accent); color: white; font-weight: 600; cursor: pointer; }
+button { width: 100%; padding: 8px; border: none; border-radius: 8px; background: var(--accent-strong); color: white; font-weight: 600; cursor: pointer; }
 button:disabled { opacity: 0.45; cursor: not-allowed; }
 footer { font-size: 0.8rem; }
 
@@ -46,7 +47,7 @@ footer { font-size: 0.8rem; }
 .top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 .tabs { display: flex; gap: 4px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 4px; }
 .tab { width: auto; background: transparent; color: var(--muted); padding: 6px 14px; }
-.tab.active { background: var(--accent); color: white; }
+.tab.active { background: var(--accent-strong); color: white; }
 
 /* Variantes de botón */
 button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
@@ -67,7 +68,7 @@ button.ghost:hover:not(:disabled) { color: var(--danger); }
 .progress { display: flex; flex-direction: column; gap: 4px; min-width: 200px; }
 .progress-label { font-size: 0.8rem; color: var(--muted); }
 .progress-track { height: 6px; background: var(--border); border-radius: 999px; overflow: hidden; }
-.progress-fill { display: block; height: 100%; background: var(--accent); transition: width 0.2s; }
+.progress-fill { display: block; height: 100%; background: var(--accent-strong); transition: width 0.2s; }
 .progress-fill.indeterminate { width: 40%; animation: slide 1s ease-in-out infinite; }
 @keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 
@@ -83,3 +84,8 @@ button.ghost:hover:not(:disabled) { color: var(--danger); }
 /* Logs */
 .check { display: flex; gap: 6px; align-items: center; margin-left: auto; font-size: 0.85rem; }
 .log-view { margin: 16px 0; height: 460px; overflow: auto; background: #0d1117; color: #c9d1d9; border-radius: 10px; padding: 14px; font-size: 0.78rem; line-height: 1.45; white-space: pre-wrap; word-break: break-all; }
+
+/* Marca */
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand img { margin: -6px; }
+.brand p { margin: 2px 0 0; }

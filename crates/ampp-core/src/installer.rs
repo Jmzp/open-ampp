@@ -162,6 +162,9 @@ fn extract_zip(archive: &Path, out: &Path) -> Result<()> {
         let mut entry = zip.by_index(i).map_err(|e| bad(e.to_string()))?;
         // `enclosed_name` rechaza rutas absolutas o con `..` (zip slip).
         let rel = entry.enclosed_name().ok_or_else(|| bad(format!("ruta insegura: {}", entry.name())))?;
+        if is_macos_metadata(&rel) {
+            continue;
+        }
         let target = out.join(rel);
         if entry.is_dir() {
             fs::create_dir_all(&target).at(&target)?;
@@ -185,8 +188,24 @@ fn extract_tar_gz(archive: &Path, out: &Path) -> Result<()> {
     let file = fs::File::open(archive).at(archive)?;
     let mut tar = tar::Archive::new(flate2::read::GzDecoder::new(file));
     tar.set_preserve_permissions(true);
-    // `unpack` ignora entradas que saldrían de `out`.
-    tar.unpack(out).map_err(|e| Error::Archive { path: archive.to_path_buf(), reason: e.to_string() })
+    let bad = |e: std::io::Error| Error::Archive { path: archive.to_path_buf(), reason: e.to_string() };
+    for entry in tar.entries().map_err(bad)? {
+        let mut entry = entry.map_err(bad)?;
+        if is_macos_metadata(&entry.path().map_err(bad)?) {
+            continue;
+        }
+        // `unpack_in` rechaza entradas que saldrían de `out`.
+        entry.unpack_in(out).map_err(bad)?;
+    }
+    Ok(())
+}
+
+/// Archivos AppleDouble (`._*`) y `__MACOSX/` que añaden las herramientas de macOS.
+fn is_macos_metadata(path: &Path) -> bool {
+    path.components().any(|c| {
+        let c = c.as_os_str().to_string_lossy();
+        c.starts_with("._") || c == "__MACOSX"
+    })
 }
 
 fn single_root_dir(dir: &Path) -> Result<Option<PathBuf>> {
@@ -266,6 +285,28 @@ mod tests {
         assert_eq!(phases.first(), Some(&Phase::Downloading));
         assert_eq!(phases.last(), Some(&Phase::Done));
         assert!(!paths.downloads().join("php-8.3.12.part").exists());
+    }
+
+    #[tokio::test]
+    async fn ignores_appledouble_files_when_stripping_root() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(tmp.path().join("data"));
+        let archive = tmp.path().join("php.tar.gz");
+        let gz = flate2::write::GzEncoder::new(fs::File::create(&archive).unwrap(), flate2::Compression::fast());
+        let mut tar = tar::Builder::new(gz);
+        for name in ["._php-8.3.12", "php-8.3.12/php-fpm", "php-8.3.12/._php-fpm"] {
+            let mut header = tar::Header::new_gnu();
+            header.set_size(1);
+            header.set_mode(0o755);
+            header.set_cksum();
+            tar.append_data(&mut header, name, &b"x"[..]).unwrap();
+        }
+        tar.into_inner().unwrap().finish().unwrap();
+
+        let pkg = package(&archive, ArchiveKind::TarGz, sha256_of(&archive));
+        let dest = install(&paths, &pkg, |_| {}).await.unwrap();
+        let entries: Vec<_> = fs::read_dir(&dest).unwrap().map(|e| e.unwrap().file_name()).collect();
+        assert_eq!(entries, ["php-fpm"]);
     }
 
     #[tokio::test]

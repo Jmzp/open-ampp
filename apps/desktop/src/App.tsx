@@ -36,9 +36,12 @@ function App() {
   return (
     <main className="app">
       <header className="top">
-        <div>
-          <h1>OPEN_AMPP</h1>
-          <p className="muted">Apache · MariaDB · PHP para desarrollo local</p>
+        <div className="brand">
+          <img src="/logo.svg" alt="" width={52} height={52} />
+          <div>
+            <h1>Open Ampp</h1>
+            <p className="muted">Apache · MariaDB · PHP para desarrollo local</p>
+          </div>
         </div>
         <nav className="tabs">
           {PAGES.map(({ id, label }) => (

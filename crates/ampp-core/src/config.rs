@@ -38,9 +38,9 @@ const PHP_WINDOWS_EXTENSIONS: &[&str] = &[
 
 const WELCOME_PHP: &str = r#"<!doctype html>
 <meta charset="utf-8">
-<title>OPEN_AMPP</title>
+<title>Open Ampp</title>
 <style>body{font-family:system-ui,sans-serif;max-width:640px;margin:64px auto;padding:0 16px;line-height:1.5}</style>
-<h1>OPEN_AMPP funciona</h1>
+<h1>Open Ampp funciona</h1>
 <p>PHP <?= PHP_VERSION ?> atendiendo desde <code><?= htmlspecialchars(__DIR__) ?></code>.</p>
 <p><a href="info.php">Ver phpinfo()</a></p>
 "#;

@@ -25,7 +25,7 @@ function EmptyHint({ tool, platform }: { tool: Tool; platform: Platform | null }
     return (
       <p className="muted">
         Aún no hay binarios de {TOOL_LABELS[tool]} para macOS en el catálogo. Mientras tanto puedes instalarlo con
-        Homebrew (<code>brew install {HOMEBREW_FORMULA[tool]}</code>) y reiniciar OPEN_AMPP: se detecta solo.
+        Homebrew (<code>brew install {HOMEBREW_FORMULA[tool]}</code>) y reiniciar Open Ampp: se detecta solo.
       </p>
     );
   }
