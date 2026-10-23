@@ -373,6 +373,8 @@ struct PhpConfig {
     defaults: BTreeMap<String, String>,
     /// Active PHP version.
     version: Option<String>,
+    /// Every installed PHP version (the settings apply to all of them), newest first.
+    installed: Vec<String>,
     /// Loaded modules (`php -m`).
     loaded: Vec<String>,
     /// Extensions that can be toggled (Windows DLLs).
@@ -401,7 +403,14 @@ async fn get_php_config(app: tauri::State<'_, AppState>) -> CommandResult<PhpCon
         }
         None => (None, Vec::new(), Vec::new(), None),
     };
-    Ok(PhpConfig { settings: state.php, defaults, version, loaded, optional, ini_path })
+    let installed = state
+        .installed
+        .get(&Tool::Php)
+        .into_iter()
+        .flatten()
+        .filter_map(|id| install::locate(&app.paths, Tool::Php, id).ok().map(|i| i.version))
+        .collect();
+    Ok(PhpConfig { settings: state.php, defaults, version, installed, loaded, optional, ini_path })
 }
 
 /// Saves the PHP settings. Returns `true` if PHP was restarted to apply them.

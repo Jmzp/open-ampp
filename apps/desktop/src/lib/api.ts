@@ -61,6 +61,8 @@ export interface PhpConfig {
   settings: PhpSettings;
   defaults: Record<string, string>;
   version: string | null;
+  /** Every installed PHP version: the settings apply to all of them. */
+  installed: string[];
   loaded: string[];
   optional: { name: string; enabled: boolean }[];
   ini_path: string | null;
