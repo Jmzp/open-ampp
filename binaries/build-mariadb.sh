@@ -13,6 +13,16 @@ source "$HERE/sources.sh"
 source "$HERE/lib.sh"
 
 SHA=$(mariadb_sha256 "$VERSION") || die "no checksum in sources.sh for MariaDB $VERSION"
+
+# CI sets SKIP_EXISTING=1 so adding a version does not rebuild the published ones. Uses the API
+# through curl because the Linux builds run in a container without `gh`.
+asset="mariadb-$VERSION-$OS-$ARCH.tar.gz"
+if [ "${SKIP_EXISTING:-}" = 1 ] && curl -fsSL ${GH_TOKEN:+-H "Authorization: Bearer $GH_TOKEN"} \
+  "https://api.github.com/repos/${GITHUB_REPOSITORY:-Jmzp/open-ampp}/releases/tags/bin-mariadb-$VERSION" 2>/dev/null \
+  | grep -q "\"name\": *\"$asset\""; then
+  log "$asset is already published; skipping"
+  exit 0
+fi
 command -v cmake >/dev/null || die "cmake is missing"
 bison --version | head -1 | grep -qE ' [3-9]\.' || die "bison ≥ 3 is required (found: $(bison --version | head -1))"
 

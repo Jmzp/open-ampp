@@ -49,7 +49,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        version: ["10.11.19", "11.4.13", "11.8.9"]
+        version: ["10.11.19", "11.4.13", "11.8.9", "12.3.3"]
         platform:
           - { runner: macos-15, container: "" }
           - { runner: macos-15-intel, container: "" }
@@ -69,6 +69,10 @@ jobs:
           brew install cmake bison
           echo "$(brew --prefix bison)/bin" >> "$GITHUB_PATH"
       - name: Build
+        env:
+          GH_TOKEN: ${{ github.token }}
+          # Only the versions not published yet are built.
+          SKIP_EXISTING: "1"
         run: WORK="$RUNNER_TEMP/work" binaries/build-mariadb.sh "${{ matrix.version }}" dist
       - uses: actions/upload-artifact@v4
         with:
@@ -83,7 +87,7 @@ jobs:
       max-parallel: 6
       matrix:
         # Each minor resolves to its latest patch release at build time (see build-php.sh).
-        version: ["8.2", "8.3", "8.4"]
+        version: ["8.2", "8.3", "8.4", "8.5"]
         # static-php-cli links Linux builds statically against musl, so no old-glibc container is needed.
         runner: [macos-15, macos-15-intel, ubuntu-24.04, ubuntu-24.04-arm]
     runs-on: ${{ matrix.runner }}
