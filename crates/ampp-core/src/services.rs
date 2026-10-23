@@ -533,9 +533,11 @@ impl Supervisor {
         if cfg!(windows) {
             cmd.arg(format!("--port={port}"));
         } else {
+            // The script runs from the install root. A relative basedir dodges its unquoted
+            // `$basedir/bin`, which breaks on paths with spaces (macOS's "Application Support").
             cmd.args([
                 "--no-defaults".to_string(),
-                format!("--basedir={}", path_arg(&inst.root)),
+                "--basedir=.".into(),
                 "--auth-root-authentication-method=normal".into(),
                 "--skip-test-db".into(),
             ]);
