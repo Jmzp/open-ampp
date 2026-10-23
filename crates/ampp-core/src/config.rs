@@ -322,6 +322,15 @@ pub async fn php_loaded_modules(paths: &AppPaths, inst: &Installation, state: &S
     Ok(modules)
 }
 
+/// A project served on its own domain (see `projects`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Vhost {
+    pub domain: String,
+    pub docroot: PathBuf,
+    /// FastCGI port of the PHP version that serves it.
+    pub php_port: u16,
+}
+
 /// `extra_conf` is appended to `httpd.conf` (e.g. the phpMyAdmin alias).
 pub fn write_apache(
     paths: &AppPaths,
@@ -329,6 +338,7 @@ pub fn write_apache(
     http_port: u16,
     php_port: u16,
     docroot: &Path,
+    vhosts: &[Vhost],
     extra_conf: &str,
 ) -> Result<PathBuf> {
     let modules_dir = inst.apache_modules();
@@ -354,11 +364,37 @@ pub fn write_apache(
                 ("log_dir", &slash(&paths.logs())),
                 ("docroot", &slash(docroot)),
                 ("load_modules", &load_modules),
+                ("vhosts", &apache_vhosts(http_port, vhosts)),
                 ("extra_conf", extra_conf),
             ],
         ),
     )?;
     Ok(conf)
+}
+
+/// Name-based virtual hosts. Once there is one, Apache sends requests for unknown names to the
+/// first, so `localhost` goes first and keeps the main configuration (`www/`, phpMyAdmin…).
+fn apache_vhosts(http_port: u16, vhosts: &[Vhost]) -> String {
+    if vhosts.is_empty() {
+        return String::new();
+    }
+    let mut out = format!("<VirtualHost 127.0.0.1:{http_port}>\n    ServerName localhost\n</VirtualHost>\n");
+    for v in vhosts {
+        let (domain, docroot, handler) = (&v.domain, slash(&v.docroot), php_handler(v.php_port));
+        out.push_str(&format!(
+            "\n<VirtualHost 127.0.0.1:{http_port}>\n    \
+             ServerName {domain}\n    \
+             DocumentRoot \"{docroot}\"\n    \
+             <Directory \"{docroot}\">\n        \
+             Options Indexes FollowSymLinks\n        \
+             AllowOverride All\n        \
+             Require all granted\n    \
+             </Directory>\n    \
+             <FilesMatch \"\\.php$\">\n    {handler}\n    </FilesMatch>\n\
+             </VirtualHost>\n"
+        ));
+    }
+    out
 }
 
 /// Body of the `.php` handler block. On Windows Apache appends the script path to the handler URL,
@@ -423,7 +459,7 @@ mod tests {
         fs::write(root.join("modules/mod_proxy_fcgi.so"), "").unwrap();
         let inst = Installation { tool: Tool::Apache, id: "2.4.69".into(), version: "2.4.69".into(), root, system: false };
 
-        let conf = write_apache(&paths, &inst, 8080, 9083, Path::new("/srv/www"), "Alias /x \"/y\"").unwrap();
+        let conf = write_apache(&paths, &inst, 8080, 9083, Path::new("/srv/www"), &[], "Alias /x \"/y\"").unwrap();
         let text = fs::read_to_string(conf).unwrap();
         assert!(text.contains("LoadModule proxy_fcgi_module"));
         assert!(!text.contains("LoadModule rewrite_module"));
@@ -432,7 +468,40 @@ mod tests {
         // Windows needs the trailing slash so the drive letter does not end up in the port.
         assert_eq!(text.contains("proxy:fcgi://127.0.0.1:9083/\""), cfg!(windows));
         assert!(text.contains("Alias /x"));
+        assert!(!text.contains("<VirtualHost"), "no projects, no virtual hosts");
         assert!(!text.contains("{{"), "no placeholders may remain");
+    }
+
+    #[test]
+    fn apache_conf_adds_a_virtual_host_per_project_after_localhost() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(tmp.path().join("data"));
+        let inst = Installation {
+            tool: Tool::Apache,
+            id: "2.4.69".into(),
+            version: "2.4.69".into(),
+            root: tmp.path().join("httpd"),
+            system: false,
+        };
+        let vhosts = [
+            Vhost { domain: "blog.localhost".into(), docroot: "/srv/blog/public".into(), php_port: 9082 },
+            Vhost { domain: "shop.localhost".into(), docroot: "/srv/shop".into(), php_port: 9084 },
+        ];
+        let conf = write_apache(&paths, &inst, 8080, 9084, Path::new("/srv/www"), &vhosts, "").unwrap();
+        let text = fs::read_to_string(conf).unwrap();
+        assert_eq!(text.matches("<VirtualHost 127.0.0.1:8080>").count(), 3);
+        let (default, blog, shop) = (
+            text.find("ServerName localhost\n").unwrap(),
+            text.find("ServerName blog.localhost").unwrap(),
+            text.find("ServerName shop.localhost").unwrap(),
+        );
+        assert!(default < blog && blog < shop, "localhost must be the first (default) virtual host");
+        assert!(text.contains("DocumentRoot \"/srv/blog/public\""));
+        assert!(text.contains("<Directory \"/srv/blog/public\">"));
+        let blog_block = &text[blog..shop];
+        assert!(blog_block.contains("proxy:fcgi://127.0.0.1:9082"), "{blog_block}");
+        assert!(text[shop..].contains("proxy:fcgi://127.0.0.1:9084"));
+        assert!(!text.contains("{{"));
     }
 
     #[test]

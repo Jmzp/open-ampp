@@ -101,6 +101,9 @@ export function Dashboard({ state, onManage }: { state: AppState; onManage: () =
                 <dt>{t.dashboard.pid}</dt>
                 <dd>{s?.pid ?? "—"}</dd>
               </dl>
+              {running && !!s?.extra_versions.length && (
+                <p className="muted small">{t.dashboard.alsoRunning(s.extra_versions.join(", "))}</p>
+              )}
               {s?.error && !running && <p className="error small">{s.error.split("\n")[0]}</p>}
               {!active ? (
                 <button className="secondary" onClick={onManage}>

@@ -15,6 +15,7 @@ use crate::error::{Error, IoContext, Result};
 use crate::install::{self, Installation};
 use crate::paths::{AppPaths, Tool};
 use crate::ports;
+use crate::projects;
 use crate::state::State;
 use crate::tools;
 
@@ -22,6 +23,8 @@ const START_TIMEOUT: Duration = Duration::from_secs(20);
 const STOP_TIMEOUT: Duration = Duration::from_secs(10);
 /// Trailing log bytes included in the message when a service fails.
 const LOG_TAIL_ON_ERROR: u64 = 1500;
+/// PID files of the extra PHP versions: `run/php@8.2.30.pid`.
+const EXTRA_PHP_PREFIX: &str = "php@";
 
 #[derive(Debug, Clone, Serialize)]
 pub struct ServiceStatus {
@@ -35,6 +38,8 @@ pub struct ServiceStatus {
     pub error: Option<String>,
     /// Launched by another Open AMPP process (e.g. `ampp up` in a terminal).
     pub external: bool,
+    /// PHP only: other versions running for projects, newest first.
+    pub extra_versions: Vec<String>,
 }
 
 /// Contents of `run/<tool>.pid`: the service, who launched it, and with which version and port.
@@ -63,6 +68,33 @@ impl PidRecord {
     }
 }
 
+/// A supervised process: each service, plus one PHP per extra version that projects need.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+enum Unit {
+    Service(Tool),
+    /// PHP version (id) used by a project besides the active one.
+    Php(String),
+}
+
+impl Unit {
+    fn tool(&self) -> Tool {
+        match self {
+            Unit::Service(tool) => *tool,
+            Unit::Php(_) => Tool::Php,
+        }
+    }
+
+    /// Order in which units stop: Apache first, MariaDB last.
+    fn stop_rank(&self) -> u8 {
+        match self {
+            Unit::Service(Tool::Apache) => 0,
+            Unit::Php(_) => 1,
+            Unit::Service(Tool::Php) => 2,
+            Unit::Service(Tool::Mariadb) => 3,
+        }
+    }
+}
+
 struct Running {
     child: Child,
     inst: Installation,
@@ -79,7 +111,7 @@ struct Launch {
 
 pub struct Supervisor {
     paths: AppPaths,
-    procs: Mutex<HashMap<Tool, Running>>,
+    procs: Mutex<HashMap<Unit, Running>>,
     errors: Mutex<HashMap<Tool, String>>,
 }
 
@@ -97,70 +129,129 @@ impl Supervisor {
         let mut procs = self.procs.lock().await;
         let mut errors = self.errors.lock().await;
 
-        let exited: Vec<Tool> = procs
+        let exited: Vec<Unit> = procs
             .iter_mut()
-            .filter_map(|(tool, r)| r.child.try_wait().ok().flatten().map(|code| (*tool, code)))
-            .map(|(tool, code)| {
-                errors.insert(tool, tr!("el proceso terminó inesperadamente ({code})", "the process exited unexpectedly ({code})"));
-                tool
+            .filter_map(|(unit, r)| r.child.try_wait().ok().flatten().map(|code| (unit.clone(), code)))
+            .map(|(unit, code)| {
+                errors.insert(unit.tool(), tr!("el proceso terminó inesperadamente ({code})", "the process exited unexpectedly ({code})"));
+                unit
             })
             .collect();
-        for tool in exited {
-            procs.remove(&tool);
-            let _ = fs::remove_file(self.pid_file(tool));
+        for unit in exited {
+            procs.remove(&unit);
+            let _ = fs::remove_file(self.pid_file(&unit));
         }
+
+        // Extra PHP versions for projects, launched by us or by another process.
+        let mut extra_versions: Vec<String> = procs
+            .iter()
+            .filter(|(unit, _)| matches!(unit, Unit::Php(_)))
+            .map(|(_, r)| r.inst.version.clone())
+            .chain(
+                self.extra_php_units()
+                    .into_iter()
+                    .filter(|unit| !procs.contains_key(unit))
+                    .filter_map(|unit| self.external(&unit))
+                    .map(|rec| rec.id),
+            )
+            .collect();
+        extra_versions.sort_by(|a, b| crate::catalog::compare_versions(b, a));
 
         Tool::ALL
             .iter()
-            .map(|&tool| match procs.get(&tool) {
-                Some(r) => ServiceStatus {
-                    tool,
-                    running: true,
-                    pid: r.child.id(),
-                    version: Some(r.inst.version.clone()),
-                    port: Some(r.port),
-                    error: None,
-                    external: false,
-                },
-                None => match self.external(tool) {
-                    Some(rec) => ServiceStatus {
+            .map(|&tool| {
+                let extra_versions = if tool == Tool::Php { extra_versions.clone() } else { Vec::new() };
+                match procs.get(&Unit::Service(tool)) {
+                    Some(r) => ServiceStatus {
                         tool,
                         running: true,
-                        pid: Some(rec.pid),
-                        version: Some(rec.id),
-                        port: Some(rec.port),
+                        pid: r.child.id(),
+                        version: Some(r.inst.version.clone()),
+                        port: Some(r.port),
                         error: None,
-                        external: true,
-                    },
-                    None => ServiceStatus {
-                        tool,
-                        running: false,
-                        pid: None,
-                        version: None,
-                        port: None,
-                        error: errors.get(&tool).cloned(),
                         external: false,
+                        extra_versions,
                     },
-                },
+                    None => match self.external(&Unit::Service(tool)) {
+                        Some(rec) => ServiceStatus {
+                            tool,
+                            running: true,
+                            pid: Some(rec.pid),
+                            version: Some(rec.id),
+                            port: Some(rec.port),
+                            error: None,
+                            external: true,
+                            extra_versions,
+                        },
+                        None => ServiceStatus {
+                            tool,
+                            running: false,
+                            pid: None,
+                            version: None,
+                            port: None,
+                            error: errors.get(&tool).cloned(),
+                            external: false,
+                            extra_versions,
+                        },
+                    },
+                }
             })
             .collect()
     }
 
+    /// Starts a service. For PHP it also starts the other versions that projects need (and stops
+    /// the ones no longer needed), even when the active one is already running.
     pub async fn start(&self, tool: Tool, state: &State) -> Result<()> {
-        if self.procs.lock().await.contains_key(&tool) || self.external(tool).is_some() {
-            return Ok(());
+        let unit = Unit::Service(tool);
+        let running = self.procs.lock().await.contains_key(&unit) || self.external(&unit).is_some();
+        if !running {
+            self.errors.lock().await.remove(&tool);
+            let result = self.start_inner(tool, state).await;
+            if let Err(e) = &result {
+                self.errors.lock().await.insert(tool, e.to_string());
+            }
+            result?;
         }
-        self.errors.lock().await.remove(&tool);
-        let result = self.start_inner(tool, state).await;
-        if let Err(e) = &result {
-            self.errors.lock().await.insert(tool, e.to_string());
-        }
-        result
+        if tool == Tool::Php { self.sync_php_extras(state).await } else { Ok(()) }
     }
 
     async fn start_inner(&self, tool: Tool, state: &State) -> Result<()> {
         let id = state.active.get(&tool).ok_or(Error::NoActiveVersion(tool))?;
         let inst = install::locate(&self.paths, tool, id)?;
+        let unit = Unit::Service(tool);
+        let running = self.launch(&unit, inst, state).await?;
+        self.procs.lock().await.insert(unit, running);
+        Ok(())
+    }
+
+    /// Starts the extra PHP versions that projects need and stops the ones no longer needed.
+    async fn sync_php_extras(&self, state: &State) -> Result<()> {
+        let wanted = projects::extra_php(&self.paths, state);
+        let stale: Vec<Unit> = self
+            .procs
+            .lock()
+            .await
+            .keys()
+            .filter(|unit| matches!(unit, Unit::Php(id) if !wanted.iter().any(|w| &w.id == id)))
+            .cloned()
+            .collect();
+        for unit in stale {
+            self.stop_unit(&unit).await;
+        }
+        for inst in wanted {
+            let unit = Unit::Php(inst.id.clone());
+            if self.procs.lock().await.contains_key(&unit) || self.external(&unit).is_some() {
+                continue;
+            }
+            let running = self.launch(&unit, inst, state).await?;
+            self.procs.lock().await.insert(unit, running);
+        }
+        Ok(())
+    }
+
+    /// Configures and spawns a unit, then waits until its port accepts connections.
+    async fn launch(&self, unit: &Unit, inst: Installation, state: &State) -> Result<Running> {
+        let tool = unit.tool();
         check_runtime(tool)?;
         let launch = self.prepare(&inst, state).await?;
 
@@ -169,10 +260,10 @@ impl Supervisor {
         }
 
         let log_path = self.log_file(tool);
+        let pid_file = self.pid_file(unit);
         let mut child = spawn(&launch, &log_path)?;
         if let Some(pid) = child.id() {
             let record = PidRecord { pid, port: launch.port, id: inst.id.clone(), owner: std::process::id() };
-            let pid_file = self.pid_file(tool);
             fs::write(&pid_file, record.render()).at(&pid_file)?;
         }
 
@@ -180,7 +271,7 @@ impl Supervisor {
         let deadline = tokio::time::Instant::now() + START_TIMEOUT;
         loop {
             if let Some(code) = child.try_wait().at(&launch.program)? {
-                let _ = fs::remove_file(self.pid_file(tool));
+                let _ = fs::remove_file(&pid_file);
                 return Err(Error::ServiceFailed {
                     tool,
                     reason: {
@@ -194,7 +285,7 @@ impl Supervisor {
             }
             if tokio::time::Instant::now() >= deadline {
                 terminate(&mut child, None).await;
-                let _ = fs::remove_file(self.pid_file(tool));
+                let _ = fs::remove_file(&pid_file);
                 return Err(Error::ServiceFailed {
                     tool,
                     reason: {
@@ -209,24 +300,36 @@ impl Supervisor {
             }
             tokio::time::sleep(Duration::from_millis(250)).await;
         }
+        Ok(Running { child, inst, port: launch.port })
+    }
 
-        self.procs.lock().await.insert(tool, Running { child, inst, port: launch.port });
+    /// Stops a service, even if another process launched it. Stopping PHP stops every version.
+    pub async fn stop(&self, tool: Tool) -> Result<()> {
+        if tool == Tool::Php {
+            let mut extras = self.extra_php_units();
+            extras.extend(self.procs.lock().await.keys().filter(|u| matches!(u, Unit::Php(_))).cloned());
+            extras.sort();
+            extras.dedup();
+            for unit in extras {
+                self.stop_unit(&unit).await;
+            }
+        }
+        self.stop_unit(&Unit::Service(tool)).await;
+        self.errors.lock().await.remove(&tool);
         Ok(())
     }
 
-    pub async fn stop(&self, tool: Tool) -> Result<()> {
-        let Some(mut running) = self.procs.lock().await.remove(&tool) else {
-            if let Some(rec) = self.external(tool) {
-                self.stop_external(tool, &rec).await;
+    async fn stop_unit(&self, unit: &Unit) {
+        let Some(mut running) = self.procs.lock().await.remove(unit) else {
+            if let Some(rec) = self.external(unit) {
+                self.stop_external(unit, &rec).await;
             }
-            return Ok(());
+            return;
         };
         let graceful =
-            if tool == Tool::Mariadb { mariadb_shutdown_command(&running.inst, running.port) } else { None };
+            if unit.tool() == Tool::Mariadb { mariadb_shutdown_command(&running.inst, running.port) } else { None };
         terminate(&mut running.child, graceful).await;
-        let _ = fs::remove_file(self.pid_file(tool));
-        self.errors.lock().await.remove(&tool);
-        Ok(())
+        let _ = fs::remove_file(self.pid_file(unit));
     }
 
     /// Starts in dependency order: PHP and MariaDB before Apache.
@@ -250,40 +353,42 @@ impl Supervisor {
 
     /// Stops only the services launched by this process (when the app or the CLI exits).
     pub async fn shutdown(&self) {
-        for tool in [Tool::Apache, Tool::Php, Tool::Mariadb] {
-            let owned = self.procs.lock().await.contains_key(&tool);
-            if owned {
-                let _ = self.stop(tool).await;
-            }
+        let mut owned: Vec<Unit> = self.procs.lock().await.keys().cloned().collect();
+        owned.sort_by_key(Unit::stop_rank);
+        for unit in owned {
+            self.stop_unit(&unit).await;
         }
     }
 
     /// Stops services left running by a previous session whose launcher is gone (e.g. the app
     /// crashed). Services owned by another live process, such as `ampp up`, are left alone.
     pub async fn cleanup_orphans(&self) {
-        for tool in Tool::ALL {
-            let Some(rec) = self.read_pid(tool) else {
-                let _ = fs::remove_file(self.pid_file(tool));
+        let units = Tool::ALL.into_iter().map(Unit::Service).chain(self.extra_php_units());
+        for unit in units {
+            let Some(rec) = self.read_pid(&unit) else {
+                let _ = fs::remove_file(self.pid_file(&unit));
                 continue;
             };
-            match process_alive(rec.pid, expected_process_names(tool)) {
+            match process_alive(rec.pid, expected_process_names(unit.tool())) {
                 false => {
-                    let _ = fs::remove_file(self.pid_file(tool));
+                    let _ = fs::remove_file(self.pid_file(&unit));
                 }
-                true if !owner_alive(rec.owner) => self.stop_external(tool, &rec).await,
+                true if !owner_alive(rec.owner) => self.stop_external(&unit, &rec).await,
                 true => {}
             }
         }
     }
 
-    /// Running service launched by another process, according to its PID file.
-    fn external(&self, tool: Tool) -> Option<PidRecord> {
-        let rec = self.read_pid(tool)?;
-        (rec.owner != std::process::id() && process_alive(rec.pid, expected_process_names(tool))).then_some(rec)
+    /// Running unit launched by another process, according to its PID file.
+    fn external(&self, unit: &Unit) -> Option<PidRecord> {
+        let rec = self.read_pid(unit)?;
+        (rec.owner != std::process::id() && process_alive(rec.pid, expected_process_names(unit.tool())))
+            .then_some(rec)
     }
 
     /// Graceful stop of a process that is not our child.
-    async fn stop_external(&self, tool: Tool, rec: &PidRecord) {
+    async fn stop_external(&self, unit: &Unit, rec: &PidRecord) {
+        let tool = unit.tool();
         #[cfg(unix)]
         let _ = nix::sys::signal::killpg(nix::unistd::Pid::from_raw(rec.pid as i32), nix::sys::signal::Signal::SIGTERM);
         #[cfg(windows)]
@@ -307,15 +412,35 @@ impl Supervisor {
         if process_alive(rec.pid, names) {
             kill_tree(rec.pid);
         }
-        let _ = fs::remove_file(self.pid_file(tool));
+        let _ = fs::remove_file(self.pid_file(unit));
     }
 
-    fn read_pid(&self, tool: Tool) -> Option<PidRecord> {
-        PidRecord::parse(&fs::read_to_string(self.pid_file(tool)).ok()?)
+    fn read_pid(&self, unit: &Unit) -> Option<PidRecord> {
+        PidRecord::parse(&fs::read_to_string(self.pid_file(unit)).ok()?)
     }
 
-    fn pid_file(&self, tool: Tool) -> PathBuf {
-        self.paths.run().join(format!("{}.pid", tool.as_str()))
+    /// `run/<tool>.pid` for the services, `run/php@<version>.pid` for the extra PHP versions.
+    fn pid_file(&self, unit: &Unit) -> PathBuf {
+        let name = match unit {
+            Unit::Service(tool) => tool.as_str().to_string(),
+            Unit::Php(id) => format!("{EXTRA_PHP_PREFIX}{id}"),
+        };
+        self.paths.run().join(format!("{name}.pid"))
+    }
+
+    /// Extra PHP versions with a PID file, whoever launched them.
+    fn extra_php_units(&self) -> Vec<Unit> {
+        let Ok(entries) = fs::read_dir(self.paths.run()) else {
+            return Vec::new();
+        };
+        entries
+            .flatten()
+            .filter_map(|e| {
+                let name = e.file_name().to_string_lossy().into_owned();
+                let id = name.strip_prefix(EXTRA_PHP_PREFIX)?.strip_suffix(".pid")?;
+                Some(Unit::Php(id.to_string()))
+            })
+            .collect()
     }
 
     /// Writes the configuration and returns how to launch the service.
@@ -361,8 +486,10 @@ impl Supervisor {
                 let program = inst.httpd().ok_or_else(|| missing("httpd"))?;
                 let docroot = config::ensure_docroot(&self.paths)?;
                 let extra = tools::phpmyadmin_apache_conf(&self.paths, state.ports.mariadb)?;
+                let php_port = php_port(state)?;
+                let vhosts = projects::vhosts(&self.paths, state, php_port);
                 let conf =
-                    config::write_apache(&self.paths, inst, state.ports.http, php_port(state)?, &docroot, &extra)?;
+                    config::write_apache(&self.paths, inst, state.ports.http, php_port, &docroot, &vhosts, &extra)?;
                 let mut args = vec!["-f".into(), path_arg(&conf)];
                 if !cfg!(windows) {
                     args.push("-DFOREGROUND".into());

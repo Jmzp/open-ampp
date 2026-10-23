@@ -11,6 +11,7 @@ pub mod install;
 pub mod installer;
 pub mod paths;
 pub mod ports;
+pub mod projects;
 pub mod services;
 pub mod state;
 pub mod tools;

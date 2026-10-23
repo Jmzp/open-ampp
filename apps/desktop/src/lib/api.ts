@@ -20,8 +20,23 @@ export interface Project {
   name: string;
   domain: string;
   docroot: string;
+  /** PHP series ("8.2"); `null` uses the active version. */
   php: string | null;
   https: boolean;
+}
+
+export interface ProjectInfo extends Project {
+  url: string;
+  /** PHP version that serves it; `null` if its series is no longer installed (the active one serves it). */
+  php_version: string | null;
+  folder_exists: boolean;
+}
+
+export interface ProjectsInfo {
+  projects: ProjectInfo[];
+  /** Installed PHP series, newest first. */
+  php_series: string[];
+  active_series: string | null;
 }
 
 export type Extra = "phpmyadmin" | "composer";
@@ -89,6 +104,8 @@ export interface ServiceStatus {
   error: string | null;
   /** Launched from a terminal (`ampp up`). */
   external: boolean;
+  /** PHP only: other versions running for projects. */
+  extra_versions: string[];
 }
 
 export const HOMEBREW = "homebrew";
@@ -148,6 +165,12 @@ export const api = {
   setPorts: (http: number, mariadb: number) => invoke<void>("set_ports", { http, mariadb }),
   mariadbInfo: () => invoke<MariadbInfo>("mariadb_info"),
   createDatabase: (name: string) => invoke<void>("create_database", { name }),
+  getProjects: () => invoke<ProjectsInfo>("get_projects"),
+  /** Adds a project or replaces `previous`. Returns `true` if Apache was restarted to apply it. */
+  saveProject: (previous: string | null, project: Project) => invoke<boolean>("save_project", { previous, project }),
+  /** Returns `true` if Apache was restarted to apply it. */
+  removeProject: (name: string) => invoke<boolean>("remove_project", { name }),
+  openProjectFolder: (name: string) => invoke<void>("open_project_folder", { name }),
   onInstallProgress: (cb: (p: InstallProgress) => void): Promise<UnlistenFn> =>
     listen<InstallProgress>("install-progress", (e) => cb(e.payload)),
   onInstallFinished: (cb: (f: InstallFinished) => void): Promise<UnlistenFn> =>

@@ -26,6 +26,7 @@ Varias versiones de cada herramienta, una app de escritorio amigable y el mismo 
 Open AMPP es una alternativa moderna a XAMPP / MAMP / LAMPP. Abres la app, eliges qué versiones quieres y con un clic tienes un servidor web con PHP y una base de datos funcionando en tu máquina.
 
 - 🧩 **Multiversión**: instala PHP 8.2, 8.3, 8.4 y 8.5 (y varias versiones de MariaDB) lado a lado y cambia entre ellas cuando quieras.
+- 🌐 **Proyectos**: sirve cualquier carpeta en su propio dominio `*.localhost`, cada una con su versión de PHP, sin editar el archivo hosts.
 - 🐘 **PHP al estilo XAMPP**: el `php.ini` por defecto es el de XAMPP, con sus extensiones (`mysqli`, `pdo_mysql`, `mbstring`, `curl`, `openssl`…) más `intl`, `gd`, `zip`, `sodium` y `opcache`.
 - 🗄️ **phpMyAdmin y Composer** a un clic, ya conectados a las versiones activas.
 - 📦 **Nada que instalar en el sistema**: la app descarga sus propios binarios portables, verificados con SHA-256, dentro de su carpeta de datos. No toca Homebrew, `apt` ni el registro de Windows.
@@ -108,10 +109,21 @@ ampp list                   # versiones instaladas y disponibles
 ampp install php            # el PHP más reciente; también: ampp install mariadb 11.4.13, ampp install phpmyadmin
 ampp upgrade                # lleva las versiones instaladas a su último parche
 ampp use php 8.3.36         # versión activa
+ampp project add blog ~/sites/blog/public --php 8.2   # http://blog.localhost:8080
+ampp project ls             # también: ampp project rm blog
 ampp php -v                 # pasa los argumentos al PHP activo (igual con composer y mariadb)
 ```
 
 La app y `ampp` comparten estado: lo que inicia uno, el otro lo ve y lo puede detener.
+
+## 🌐 Proyectos
+
+La pestaña **Proyectos** sirve cualquier carpeta en su propio dominio, como `http://blog.localhost:8080`, con la versión de PHP que elijas (o la activa). Varias versiones conviven: cada serie de PHP que necesita un proyecto tiene su propio proceso FastCGI, y Apache dirige cada dominio al suyo con un virtual host.
+
+- Los dominios `*.localhost` apuntan a `127.0.0.1` en Chrome, Firefox, Edge y `curl` sin configurar nada. Otros dominios (p. ej. `blog.test`) necesitan una entrada en el archivo hosts.
+- Un proyecto guarda la **serie** de PHP (`8.2`), así que `ampp upgrade` y **Actualizar a …** no lo rompen.
+- `localhost` y cualquier dominio desconocido siguen sirviendo `www/` y phpMyAdmin.
+- Quitar un proyecto solo deja de servirlo: su carpeta nunca se borra.
 
 ## 🐘 Configuración de PHP
 
@@ -219,7 +231,8 @@ Al subir un tag `v*` corre el workflow **Release**: compila los instaladores de 
 - [x] **Binarios propios**: Apache, MariaDB y PHP (CLI + FPM) portables para macOS y Linux
 - [x] **Pulido**: icono en la bandeja, editor de `php.ini` y extensiones, phpMyAdmin, Composer, CLI `ampp`, interfaz en español e inglés
 - [x] **Distribución**: instaladores (DMG, MSI/NSIS, AppImage/deb/rpm) y actualización automática
-- [ ] **Proyectos**: dominios `*.localhost`, versión de PHP por proyecto, HTTPS con CA local
+- [x] **Proyectos**: dominios `*.localhost`, versión de PHP por proyecto
+- [ ] **HTTPS** para proyectos con CA local
 - [ ] Firma con Developer ID de Apple y firma de código en Windows
 
 ## 🤝 Contribuir

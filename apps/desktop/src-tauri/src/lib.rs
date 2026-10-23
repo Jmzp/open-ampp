@@ -5,9 +5,10 @@ use std::path::PathBuf;
 use std::sync::{Mutex, RwLock};
 
 use ampp_core::install::{self, HOMEBREW};
-use ampp_core::state::PhpSettings;
+use ampp_core::state::{PhpSettings, Project};
 use ampp_core::{
-    AppPaths, Extra, Manifest, Platform, ServiceStatus, State, Supervisor, Tool, config, installer, services, tools,
+    AppPaths, Extra, Manifest, Platform, ServiceStatus, State, Supervisor, Tool, config, installer, projects, services,
+    tools,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
@@ -63,6 +64,17 @@ impl AppState {
             self.supervisor.start(tool, &self.snapshot()).await?;
         }
         Ok(running)
+    }
+
+    /// Applies project changes: starts the PHP versions they need and regenerates Apache's virtual
+    /// hosts. Returns `true` if Apache was restarted.
+    async fn apply_projects(&self) -> CommandResult<bool> {
+        let php_running =
+            self.supervisor.status().await.iter().any(|s| s.tool == Tool::Php && s.running && !s.external);
+        if php_running {
+            self.supervisor.start(Tool::Php, &self.snapshot()).await?;
+        }
+        self.restart_if_running(Tool::Apache).await
     }
 }
 
@@ -227,8 +239,10 @@ async fn uninstall_package(app: tauri::State<'_, AppState>, tool: Tool, version:
     if version == HOMEBREW {
         return Err(ampp_core::Error::SystemInstall.into());
     }
-    let in_use = app.snapshot().active.get(&tool) == Some(&version)
-        && app.supervisor.status().await.iter().any(|s| s.tool == tool && s.running);
+    let active = app.snapshot().active.get(&tool) == Some(&version);
+    let in_use = app.supervisor.status().await.iter().any(|s| {
+        s.tool == tool && s.running && (active || s.extra_versions.contains(&version))
+    });
     if in_use {
         return Err(CommandError(tr!(
             "detén el servicio antes de desinstalar la versión en uso",
@@ -256,12 +270,18 @@ async fn upgrade_package(handle: AppHandle, tool: Tool, version: String) -> Comm
         .ok_or_else(|| ampp_core::Error::NotInCatalog { tool, version: version.clone() })?;
 
     install_package(handle.clone(), tool, new.clone()).await?;
+    let serves_project =
+        app.supervisor.status().await.iter().any(|s| s.tool == tool && s.extra_versions.contains(&version));
     if app.snapshot().active.get(&tool) == Some(&version) {
         app.update(|s| s.set_active(tool, &new))?;
         app.restart_if_running(tool).await?;
+    } else if serves_project {
+        app.restart_if_running(tool).await?;
     }
     // Keep the old version if something launched from a terminal still runs it.
-    let in_use = app.supervisor.status().await.iter().any(|s| s.tool == tool && s.running && s.version.as_deref() == Some(&version));
+    let in_use = app.supervisor.status().await.iter().any(|s| {
+        s.tool == tool && s.running && (s.version.as_deref() == Some(&version) || s.extra_versions.contains(&version))
+    });
     if !in_use {
         installer::uninstall(&app.paths, tool, &version)?;
         app.update(|s| {
@@ -512,6 +532,75 @@ async fn create_database(app: tauri::State<'_, AppState>, name: String) -> Comma
     Ok(ampp_core::db::create(&app.paths, &app.snapshot(), &name).await?)
 }
 
+#[derive(Serialize)]
+struct ProjectInfo {
+    #[serde(flatten)]
+    project: Project,
+    url: String,
+    /// PHP version that serves it; `None` if its series is no longer installed (the active one
+    /// serves it meanwhile).
+    php_version: Option<String>,
+    folder_exists: bool,
+}
+
+#[derive(Serialize)]
+struct ProjectsInfo {
+    projects: Vec<ProjectInfo>,
+    /// Installed PHP series (`8.4`), newest first.
+    php_series: Vec<String>,
+    active_series: Option<String>,
+}
+
+#[tauri::command]
+fn get_projects(app: tauri::State<AppState>) -> ProjectsInfo {
+    let state = app.snapshot();
+    let mut php_series: Vec<String> = Vec::new();
+    for id in state.installed.get(&Tool::Php).into_iter().flatten() {
+        if let Ok(inst) = install::locate(&app.paths, Tool::Php, id) {
+            let series = inst.minor_version();
+            if !php_series.contains(&series) {
+                php_series.push(series);
+            }
+        }
+    }
+    let active_series = projects::php_for(&app.paths, &state, None).ok().map(|i| i.minor_version());
+    let projects = state
+        .projects
+        .iter()
+        .map(|p| ProjectInfo {
+            url: projects::url(&state, p),
+            php_version: projects::php_for(&app.paths, &state, p.php.as_deref()).ok().map(|i| i.version),
+            folder_exists: p.docroot.is_dir(),
+            project: p.clone(),
+        })
+        .collect();
+    ProjectsInfo { projects, php_series, active_series }
+}
+
+/// Adds a project, or replaces the one called `previous`. Returns `true` if Apache was restarted.
+#[tauri::command]
+async fn save_project(app: tauri::State<'_, AppState>, previous: Option<String>, project: Project) -> CommandResult<bool> {
+    let paths = app.paths.clone();
+    app.update(|s| projects::save(&paths, s, previous.as_deref(), project))?;
+    app.apply_projects().await
+}
+
+/// Removes a project (its folder stays). Returns `true` if Apache was restarted.
+#[tauri::command]
+async fn remove_project(app: tauri::State<'_, AppState>, name: String) -> CommandResult<bool> {
+    app.update(|s| projects::remove(s, &name).map(drop))?;
+    app.apply_projects().await
+}
+
+#[tauri::command]
+fn open_project_folder(handle: AppHandle, name: String) -> CommandResult<()> {
+    let state = handle.state::<AppState>().snapshot();
+    let project = state.projects.iter().find(|p| p.name == name).ok_or_else(|| {
+        CommandError(tr!("no existe el proyecto {name}", "there is no project called {name}"))
+    })?;
+    handle.opener().open_path(project.docroot.display().to_string(), None::<&str>).map_err(|e| CommandError(e.to_string()))
+}
+
 /// Language for Rust-side messages, so the UI can match it.
 #[tauri::command]
 fn get_lang() -> ampp_core::i18n::Lang {
@@ -533,6 +622,7 @@ fn sync_homebrew(state: &mut State) {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
@@ -600,6 +690,10 @@ pub fn run() {
             get_lang,
             mariadb_info,
             create_database,
+            get_projects,
+            save_project,
+            remove_project,
+            open_project_folder,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

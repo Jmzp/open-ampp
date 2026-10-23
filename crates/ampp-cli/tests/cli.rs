@@ -118,3 +118,36 @@ fn rejects_unknown_commands_and_prints_its_version() {
     assert!(out.status.success());
     assert!(stdout(&out).contains(env!("CARGO_PKG_VERSION")));
 }
+
+#[test]
+fn project_add_list_and_remove() {
+    let (tmp, paths) = home_with_two_phps();
+    let site = tmp.path().join("sites/blog");
+    std::fs::create_dir_all(&site).unwrap();
+
+    let out = ampp(tmp.path(), &["project", "add", "blog", site.to_str().unwrap(), "--php", "8.3"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    assert!(stdout(&out).contains("blog → http://blog.localhost:8080/"), "{}", stdout(&out));
+    let state = State::load(&paths.state_file()).unwrap();
+    assert_eq!(state.projects[0].php.as_deref(), Some("8.3"));
+    assert_eq!(state.projects[0].docroot, std::fs::canonicalize(&site).unwrap());
+
+    let out = ampp(tmp.path(), &["project", "ls"]);
+    assert!(stdout(&out).contains("PHP 8.3.1"), "{}", stdout(&out));
+
+    // Invalid ones are rejected without touching the state.
+    for args in [
+        &["project", "add", "blog", site.to_str().unwrap()][..],
+        &["project", "add", "old", site.to_str().unwrap(), "--php", "7.4"],
+        &["project", "add", "gone", "/definitely/not/here"],
+    ] {
+        let out = ampp(tmp.path(), args);
+        assert!(!out.status.success(), "{args:?} must fail");
+    }
+    assert_eq!(State::load(&paths.state_file()).unwrap().projects.len(), 1);
+
+    assert!(ampp(tmp.path(), &["project", "rm", "blog"]).status.success());
+    assert!(State::load(&paths.state_file()).unwrap().projects.is_empty());
+    assert!(!ampp(tmp.path(), &["project", "rm", "blog"]).status.success());
+    assert!(site.is_dir(), "the folder is never deleted");
+}

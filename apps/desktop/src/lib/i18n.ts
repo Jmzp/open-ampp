@@ -4,7 +4,7 @@
 const es = {
   tagline: "Apache · MariaDB · PHP para desarrollo local",
   dataIn: (path: string) => `Datos en ${path}`,
-  tabs: { dashboard: "Panel", versions: "Versiones", php: "PHP", tools: "Herramientas", logs: "Logs" },
+  tabs: { dashboard: "Panel", projects: "Proyectos", versions: "Versiones", php: "PHP", tools: "Herramientas", logs: "Logs" },
   loading: "Cargando…",
 
   dashboard: {
@@ -24,6 +24,37 @@ const es = {
     start: "Iniciar",
     stop: "Detener",
     restart: "Reiniciar",
+    alsoRunning: (versions: string) => `También ${versions} para tus proyectos`,
+  },
+
+  projects: {
+    title: "Proyectos",
+    lead: "Cada proyecto se sirve en su propio dominio desde cualquier carpeta, con la versión de PHP que elijas.",
+    add: "Nuevo proyecto",
+    edit: "Editar proyecto",
+    editShort: "Editar",
+    empty: "Aún no hay proyectos. Crea uno para servir una carpeta en, por ejemplo, http://blog.localhost.",
+    name: "Nombre",
+    folder: "Carpeta (DocumentRoot)",
+    folderHint: "En Laravel o Symfony, la carpeta public/",
+    choose: "Elegir…",
+    domain: "Dominio",
+    domainHint: "Los dominios .localhost funcionan sin configurar nada.",
+    hostsHint: "Este dominio no termina en .localhost: agrégalo a tu archivo hosts apuntando a 127.0.0.1.",
+    php: "Versión de PHP",
+    activePhp: (series: string | null) => (series ? `La activa (${series})` : "La activa"),
+    save: "Guardar",
+    saving: "Guardando…",
+    cancel: "Cancelar",
+    open: "Abrir ↗",
+    openFolder: "Carpeta ↗",
+    remove: "Quitar",
+    removeHint: "Deja de servirse; la carpeta no se borra.",
+    phpMissing: (series: string) => `PHP ${series} no está instalado: lo atiende la versión activa`,
+    folderMissing: "La carpeta ya no existe",
+    savedRestarted: "Guardado. Apache se reinició para aplicarlo.",
+    saved: "Guardado. Se aplicará al iniciar Apache.",
+    removed: "Proyecto quitado.",
   },
 
   database: {
@@ -142,7 +173,7 @@ type Messages = typeof es;
 const en: Messages = {
   tagline: "Apache · MariaDB · PHP for local development",
   dataIn: (path) => `Data in ${path}`,
-  tabs: { dashboard: "Dashboard", versions: "Versions", php: "PHP", tools: "Tools", logs: "Logs" },
+  tabs: { dashboard: "Dashboard", projects: "Projects", versions: "Versions", php: "PHP", tools: "Tools", logs: "Logs" },
   loading: "Loading…",
 
   dashboard: {
@@ -162,6 +193,37 @@ const en: Messages = {
     start: "Start",
     stop: "Stop",
     restart: "Restart",
+    alsoRunning: (versions) => `Also ${versions} for your projects`,
+  },
+
+  projects: {
+    title: "Projects",
+    lead: "Each project is served on its own domain from any folder, with the PHP version you choose.",
+    add: "New project",
+    edit: "Edit project",
+    editShort: "Edit",
+    empty: "No projects yet. Create one to serve a folder at, for example, http://blog.localhost.",
+    name: "Name",
+    folder: "Folder (DocumentRoot)",
+    folderHint: "For Laravel or Symfony, the public/ folder",
+    choose: "Choose…",
+    domain: "Domain",
+    domainHint: ".localhost domains work with no setup.",
+    hostsHint: "This domain does not end in .localhost: add it to your hosts file pointing to 127.0.0.1.",
+    php: "PHP version",
+    activePhp: (series) => (series ? `The active one (${series})` : "The active one"),
+    save: "Save",
+    saving: "Saving…",
+    cancel: "Cancel",
+    open: "Open ↗",
+    openFolder: "Folder ↗",
+    remove: "Remove",
+    removeHint: "Stops serving it; the folder is not deleted.",
+    phpMissing: (series) => `PHP ${series} is not installed: the active version serves it`,
+    folderMissing: "The folder no longer exists",
+    savedRestarted: "Saved. Apache was restarted to apply it.",
+    saved: "Saved. It will apply when Apache starts.",
+    removed: "Project removed.",
   },
 
   database: {

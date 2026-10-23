@@ -8,6 +8,7 @@
   "permissions": [
     "core:default",
     "opener:default",
+    "dialog:allow-open",
     "updater:default",
     "process:allow-restart"
   ]

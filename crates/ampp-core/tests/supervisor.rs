@@ -10,7 +10,8 @@ use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use ampp_core::{AppPaths, State, Supervisor, Tool, ports};
+use ampp_core::state::Project;
+use ampp_core::{AppPaths, State, Supervisor, Tool, ports, projects};
 
 /// Set in this process before starting services, so the copies know to act as fakes.
 const FAKE: &str = "OPEN_AMPP_FAKE_SERVICE";
@@ -20,6 +21,8 @@ const FAIL: &str = "OPEN_AMPP_FAKE_FAIL";
 const PHP: &str = "8.4.1";
 const APACHE: &str = "2.4.69";
 const MARIADB: &str = "11.4.5";
+/// Second PHP series, for a project.
+const PHP_OLD: &str = "8.2.30";
 
 fn main() {
     if std::env::var_os(FAKE).is_some() {
@@ -39,6 +42,7 @@ fn main() {
         }),
         ("errors_without_active_or_installed_version", |e| Box::pin(errors_without_active_or_installed_version(e))),
         ("cleanup_removes_stale_pid_files", |e| Box::pin(cleanup_removes_stale_pid_files(e))),
+        ("projects_run_their_own_php_version", |e| Box::pin(projects_run_their_own_php_version(e))),
     ];
     let filter = std::env::args().skip(1).find(|a| !a.starts_with('-'));
     let mut failed = 0;
@@ -326,5 +330,79 @@ async fn cleanup_removes_stale_pid_files(env: Env) {
         assert!(!env.pid_file(tool).exists(), "{tool:?} PID file must be gone");
     }
     assert!(wait_until(|| ports::is_free(env.state.ports.mariadb)).await, "the orphan must be stopped");
+    sup.stop_all().await;
+}
+
+async fn projects_run_their_own_php_version(mut env: Env) {
+    let php = if cfg!(windows) { "php-cgi.exe" } else { "php-fpm" };
+    fake_binary(&env.paths.bin(Tool::Php, PHP_OLD).join(php));
+    env.state.mark_installed(Tool::Php, PHP_OLD);
+    let site = env.paths.root().join("sites/legacy");
+    std::fs::create_dir_all(&site).unwrap();
+    let legacy = Project {
+        name: "legacy".into(),
+        domain: "legacy.localhost".into(),
+        docroot: site.clone(),
+        php: Some("8.2".into()),
+        https: false,
+    };
+    projects::save(&env.paths, &mut env.state, None, legacy).unwrap();
+    // Both FastCGI ports (base + 84 and base + 82) must be free and apart from the others.
+    let taken = [env.state.ports.http, env.state.ports.mariadb];
+    env.state.ports.php_fcgi_base = loop {
+        let base = free_port() - 84;
+        if [base + 82, base + 84].iter().all(|p| ports::is_free(*p) && !taken.contains(p)) {
+            break base;
+        }
+    };
+    let old_port = ports::php_fcgi_port(env.state.ports.php_fcgi_base, PHP_OLD);
+    let extra_pid = env.paths.run().join(format!("php@{PHP_OLD}.pid"));
+
+    let sup = Supervisor::new(env.paths.clone());
+    let failures = sup.start_all(&env.state).await;
+    assert!(failures.is_empty(), "{:?}", failures.iter().map(|(t, e)| format!("{t:?}: {e}")).collect::<Vec<_>>());
+    assert!(ports::is_open(env.php_port()).await && ports::is_open(old_port).await, "both PHP versions must run");
+    let status = sup.status().await;
+    let php_status = status.iter().find(|s| s.tool == Tool::Php).unwrap();
+    assert_eq!((php_status.version.as_deref(), php_status.extra_versions.as_slice()), (Some(PHP), [PHP_OLD.to_string()].as_slice()));
+    assert!(extra_pid.exists());
+    let conf = std::fs::read_to_string(env.paths.config(Tool::Apache, APACHE).join("httpd.conf")).unwrap();
+    assert!(conf.contains("ServerName legacy.localhost"));
+    assert!(conf.contains(&format!("proxy:fcgi://127.0.0.1:{old_port}")));
+
+    // Another process sees the extra version too.
+    let record = std::fs::read_to_string(&extra_pid).unwrap().replace(&format!("\n{}\n", std::process::id()), "\n1\n");
+    std::fs::write(&extra_pid, record).unwrap();
+    let cli = Supervisor::new(env.paths.clone());
+    let php_status = cli.status().await.into_iter().find(|s| s.tool == Tool::Php).unwrap();
+    assert_eq!(php_status.extra_versions, [PHP_OLD]);
+    std::fs::write(&extra_pid, std::fs::read_to_string(&extra_pid).unwrap().replace("\n1\n", &format!("\n{}\n", std::process::id()))).unwrap();
+
+    // Without the project, starting PHP again stops the version it no longer needs.
+    projects::remove(&mut env.state, "legacy").unwrap();
+    sup.start(Tool::Php, &env.state).await.unwrap();
+    assert!(wait_until(|| ports::is_free(old_port)).await, "the unneeded version must stop");
+    assert!(!extra_pid.exists());
+    assert!(sup.status().await.into_iter().find(|s| s.tool == Tool::Php).unwrap().extra_versions.is_empty());
+
+    // Stopping PHP stops every version.
+    projects::save(&env.paths, &mut env.state, None, Project {
+        name: "legacy".into(),
+        domain: "legacy.localhost".into(),
+        docroot: site,
+        php: Some("8.2".into()),
+        https: false,
+    })
+    .unwrap();
+    sup.start(Tool::Php, &env.state).await.unwrap();
+    assert!(ports::is_open(old_port).await);
+    sup.stop(Tool::Php).await.unwrap();
+    assert!(wait_until(|| ports::is_free(old_port) && ports::is_free(env.php_port())).await);
+    assert!(!extra_pid.exists());
+
+    // A stale extra PID file is cleaned up like the others.
+    std::fs::write(&extra_pid, format!("{}\n{old_port}\n{PHP_OLD}\n1\n", u32::MAX - 1)).unwrap();
+    Supervisor::new(env.paths.clone()).cleanup_orphans().await;
+    assert!(!extra_pid.exists());
     sup.stop_all().await;
 }
