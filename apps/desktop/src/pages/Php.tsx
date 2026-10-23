@@ -86,10 +86,19 @@ export function Php({ onManage }: { onManage: () => void }) {
   return (
     <div className="stack">
       <div className="toolbar">
-        <h2 className="page-title">PHP {config.version}</h2>
-        <button className="ghost" onClick={() => api.openLocation("php_ini")}>
+        <h2 className="page-title">{t.php.title}</h2>
+        <button className="ghost" title={t.php.viewIniOf(config.version)} onClick={() => api.openLocation("php_ini")}>
           {t.php.viewIni}
         </button>
+      </div>
+      <div className="applies-to">
+        <span className="muted small">{t.php.appliesTo}</span>
+        {config.installed.map((v) => (
+          <span key={v} className="chip">
+            PHP {v}
+            {v === config.version && <span className="muted"> · {t.php.activeTag}</span>}
+          </span>
+        ))}
       </div>
       <p className="muted lead">{t.php.lead}</p>
 

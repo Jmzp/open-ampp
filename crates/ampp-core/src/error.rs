@@ -17,6 +17,8 @@ pub enum Error {
     PortInUse { tool: Tool, port: u16 },
     ServiceFailed { tool: Tool, reason: String },
     InvalidSetting(String),
+    InvalidProject(String),
+    Tls(String),
     ExtraNotInCatalog(String),
     SystemInstall,
 }
@@ -67,6 +69,8 @@ impl std::fmt::Display for Error {
                 tr!("{tool} no pudo iniciarse: {reason}", "{tool} could not start: {reason}")
             }
             Error::InvalidSetting(what) => tr!("ajuste inválido: {what}", "invalid setting: {what}"),
+            Error::InvalidProject(why) => tr!("proyecto inválido: {why}", "invalid project: {why}"),
+            Error::Tls(why) => tr!("HTTPS: {why}", "HTTPS: {why}"),
             Error::ExtraNotInCatalog(name) => {
                 tr!("{name} no está disponible en el catálogo", "{name} is not available in the catalog")
             }
@@ -127,6 +131,8 @@ mod tests {
             (Error::PortInUse { tool: Tool::Apache, port: 8080 }, vec!["Apache", "8080"]),
             (Error::ServiceFailed { tool: Tool::Php, reason: "boom".into() }, vec!["PHP", "boom"]),
             (Error::InvalidSetting("memory_limit".into()), vec!["memory_limit"]),
+            (Error::InvalidProject("blog".into()), vec!["blog"]),
+            (Error::Tls("bad key".into()), vec!["HTTPS", "bad key"]),
             (Error::ExtraNotInCatalog("composer".into()), vec!["composer"]),
             (Error::NoDataDir, vec![]),
             (Error::SystemInstall, vec!["Homebrew"]),

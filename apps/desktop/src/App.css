@@ -9,6 +9,7 @@
   --ok: #16a34a;
   --off: #9ca3af;
   --danger: #dc2626;
+  --warn: #b45309;
   font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
   color: var(--text);
   background: var(--bg);
@@ -21,6 +22,7 @@
     --text: #e6e8eb;
     --muted: #9aa3ad;
     --border: #2a2f37;
+    --warn: #f59e0b;
   }
 }
 
@@ -78,6 +80,15 @@ button.ghost:hover:not(:disabled) { color: var(--danger); }
 .state-label { margin-left: auto; font-size: 0.8rem; }
 .dot.failed { background: var(--danger); }
 .card .actions button { flex: 1; }
+.grid > .card { display: flex; flex-direction: column; }
+.grid > .card > .actions:last-child, .grid > .card > button:last-child { margin-top: auto; }
+.pools { margin: -4px 0 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+.pools-title { display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 6px; }
+.pools ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pools li { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; min-width: 0; }
+.pools .dot { width: 7px; height: 7px; flex: none; }
+.pool-version { font-weight: 600; font-variant-numeric: tabular-nums; }
+.pool-projects { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .error.small { font-size: 0.8rem; margin: 0 0 10px; }
 .error-box { white-space: pre-wrap; font-size: 0.8rem; color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); border-radius: 8px; padding: 10px 12px; margin: 12px 0 0; max-height: 200px; overflow: auto; }
 
@@ -95,6 +106,8 @@ button.ghost:hover:not(:disabled) { color: var(--danger); }
 .stack > .toolbar { margin-top: 0; }
 .page-title { margin: 0; font-size: 1.25rem; margin-right: auto; }
 .lead { margin: -6px 0 0; font-size: 0.9rem; }
+.applies-to { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: -8px; }
+.applies-to .chip .muted { font-family: inherit; }
 .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
 .panel h3 { margin: 0 0 8px; font-size: 1rem; }
 .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
@@ -121,6 +134,24 @@ input:focus, textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent
 .snippet { background: #0d1117; color: #c9d1d9; border-radius: 8px; padding: 10px 12px; overflow-x: auto; font-size: 0.8rem; }
 details summary { cursor: pointer; margin: 6px 0; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
+
+/* Projects */
+select { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; }
+.picker { display: flex; gap: 8px; }
+.picker input { flex: 1; min-width: 0; }
+.warn-text { color: var(--warn); }
+.project-list { list-style: none; margin: 0; padding: 0; }
+.project { display: flex; align-items: center; gap: 16px; padding: 12px 0; border-top: 1px solid var(--border); }
+.project:first-child { border-top: none; padding-top: 0; }
+.project-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.project-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.project-title a { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9rem; text-decoration: none; }
+.project-title a:hover { text-decoration: underline; }
+.project-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project .actions { flex-wrap: wrap; justify-content: flex-end; }
+.check-field { display: flex; align-items: flex-start; gap: 8px; font-size: 0.9rem; }
+.check-field small { display: block; }
+.warn-badge { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
 
 /* Update banner */
 .banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding: 10px 14px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); font-size: 0.9rem; }

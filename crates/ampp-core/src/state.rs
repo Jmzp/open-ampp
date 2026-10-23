@@ -79,13 +79,14 @@ impl Default for Ports {
     }
 }
 
+/// A site served by Apache on its own domain, from any folder (see `projects`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Project {
     pub name: String,
     /// Domain, e.g. `blog.localhost`.
     pub domain: String,
     pub docroot: PathBuf,
-    /// PHP version; `None` uses the active one.
+    /// PHP series (`8.2`), so patch upgrades keep working; `None` uses the active version.
     pub php: Option<String>,
     #[serde(default)]
     pub https: bool,
@@ -183,7 +184,7 @@ mod tests {
             name: "blog".into(),
             domain: "blog.localhost".into(),
             docroot: "/srv/blog/public".into(),
-            php: Some("8.1.30".into()),
+            php: Some("8.1".into()),
             https: false,
         });
         state.save(&path).unwrap();

@@ -5,13 +5,14 @@ import { UpdateBanner } from "./components/UpdateBanner";
 import { Dashboard } from "./pages/Dashboard";
 import { Logs } from "./pages/Logs";
 import { Php } from "./pages/Php";
+import { Projects } from "./pages/Projects";
 import { Tools } from "./pages/Tools";
 import { Versions } from "./pages/Versions";
 import "./App.css";
 
-type Page = "dashboard" | "versions" | "php" | "tools" | "logs";
+type Page = "dashboard" | "projects" | "versions" | "php" | "tools" | "logs";
 
-const PAGES: Page[] = ["dashboard", "versions", "php", "tools", "logs"];
+const PAGES: Page[] = ["dashboard", "projects", "versions", "php", "tools", "logs"];
 
 function App() {
   const [page, setPage] = useState<Page>("dashboard");
@@ -78,6 +79,7 @@ function App() {
       {error && <p className="error">{error}</p>}
 
       {page === "dashboard" && state && <Dashboard state={state} onManage={() => setPage("versions")} />}
+      {page === "projects" && <Projects onChanged={reload} />}
       {page === "versions" && <Versions onChanged={reload} />}
       {page === "php" && <Php onManage={() => setPage("versions")} />}
       {page === "tools" && state && <Tools state={state} onChanged={reload} />}

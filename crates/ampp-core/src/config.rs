@@ -3,11 +3,12 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::error::{IoContext, Result};
+use crate::error::{Error, IoContext, Result};
 use crate::install::Installation;
 use crate::paths::AppPaths;
 use crate::ports;
 use crate::state::{PhpSettings, State};
+use crate::tls::ServerCert;
 
 const HTTPD_CONF: &str = include_str!("../../../templates/httpd.conf");
 const PHP_INI: &str = include_str!("../../../templates/php.ini");
@@ -322,6 +323,31 @@ pub async fn php_loaded_modules(paths: &AppPaths, inst: &Installation, state: &S
     Ok(modules)
 }
 
+/// A project served on its own domain (see `projects`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Vhost {
+    pub domain: String,
+    pub docroot: PathBuf,
+    /// FastCGI port of the PHP version that serves it.
+    pub php_port: u16,
+    /// Also served over HTTPS.
+    pub https: bool,
+}
+
+/// HTTPS listener: its port and the certificate of the local CA (see `tls`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Tls {
+    pub port: u16,
+    pub cert: ServerCert,
+}
+
+/// What Apache serves besides `www/`: the projects and, if any of them wants it, HTTPS.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Sites {
+    pub vhosts: Vec<Vhost>,
+    pub tls: Option<Tls>,
+}
+
 /// `extra_conf` is appended to `httpd.conf` (e.g. the phpMyAdmin alias).
 pub fn write_apache(
     paths: &AppPaths,
@@ -329,15 +355,23 @@ pub fn write_apache(
     http_port: u16,
     php_port: u16,
     docroot: &Path,
+    sites: &Sites,
     extra_conf: &str,
 ) -> Result<PathBuf> {
     let modules_dir = inst.apache_modules();
+    let module = |m: &str| Some(modules_dir.as_ref()?.join(format!("mod_{m}.so"))).filter(|so| so.exists());
+    // mod_ssl is only loaded when needed, so a problem with it can never take plain HTTP down.
+    let tls_modules: &[&str] = if sites.tls.is_some() { &["ssl", "socache_shmcb"] } else { &[] };
+    if sites.tls.is_some() && module("ssl").is_none() {
+        return Err(Error::Tls(tr!(
+            "esta versión de Apache no incluye mod_ssl",
+            "this Apache build does not include mod_ssl"
+        )));
+    }
     let load_modules = APACHE_MODULES
         .iter()
-        .filter_map(|m| {
-            let so = modules_dir.as_ref()?.join(format!("mod_{m}.so"));
-            so.exists().then(|| format!("LoadModule {m}_module \"{}\"", slash(&so)))
-        })
+        .chain(tls_modules)
+        .filter_map(|m| module(m).map(|so| format!("LoadModule {m}_module \"{}\"", slash(&so))))
         .collect::<Vec<_>>()
         .join("\n");
 
@@ -354,11 +388,60 @@ pub fn write_apache(
                 ("log_dir", &slash(&paths.logs())),
                 ("docroot", &slash(docroot)),
                 ("load_modules", &load_modules),
+                ("vhosts", &apache_vhosts(http_port, sites, &paths.run())),
                 ("extra_conf", extra_conf),
             ],
         ),
     )?;
     Ok(conf)
+}
+
+/// Name-based virtual hosts. Once a port has one, Apache sends requests for unknown names to the
+/// first, so `localhost` goes first and keeps the main configuration (`www/`, phpMyAdmin…).
+fn apache_vhosts(http_port: u16, sites: &Sites, run_dir: &Path) -> String {
+    let mut out = String::new();
+    if !sites.vhosts.is_empty() {
+        out.push_str(&vhost_block(http_port, "localhost", None, ""));
+        for v in &sites.vhosts {
+            out.push_str(&vhost_block(http_port, &v.domain, Some(v), ""));
+        }
+    }
+    if let Some(tls) = &sites.tls {
+        let (cert, key) = (slash(&tls.cert.cert), slash(&tls.cert.key));
+        let ssl = format!(
+            "    SSLEngine on\n    SSLCertificateFile \"{cert}\"\n    SSLCertificateKeyFile \"{key}\"\n"
+        );
+        out.push_str(&format!(
+            "\nListen 127.0.0.1:{port}\n\
+             <IfModule socache_shmcb_module>\n    SSLSessionCache \"shmcb:{run}/ssl_scache(512000)\"\n</IfModule>\n",
+            port = tls.port,
+            run = slash(run_dir)
+        ));
+        out.push_str(&vhost_block(tls.port, "localhost", None, &ssl));
+        for v in sites.vhosts.iter().filter(|v| v.https) {
+            out.push_str(&vhost_block(tls.port, &v.domain, Some(v), &ssl));
+        }
+    }
+    out
+}
+
+/// One virtual host. Without a project it inherits the main configuration.
+fn vhost_block(port: u16, name: &str, project: Option<&Vhost>, ssl: &str) -> String {
+    let body = project
+        .map(|v| {
+            let (docroot, handler) = (slash(&v.docroot), php_handler(v.php_port));
+            format!(
+                "    DocumentRoot \"{docroot}\"\n    \
+                 <Directory \"{docroot}\">\n        \
+                 Options Indexes FollowSymLinks\n        \
+                 AllowOverride All\n        \
+                 Require all granted\n    \
+                 </Directory>\n    \
+                 <FilesMatch \"\\.php$\">\n    {handler}\n    </FilesMatch>\n"
+            )
+        })
+        .unwrap_or_default();
+    format!("\n<VirtualHost 127.0.0.1:{port}>\n    ServerName {name}\n{ssl}{body}</VirtualHost>\n")
 }
 
 /// Body of the `.php` handler block. On Windows Apache appends the script path to the handler URL,
@@ -423,7 +506,7 @@ mod tests {
         fs::write(root.join("modules/mod_proxy_fcgi.so"), "").unwrap();
         let inst = Installation { tool: Tool::Apache, id: "2.4.69".into(), version: "2.4.69".into(), root, system: false };
 
-        let conf = write_apache(&paths, &inst, 8080, 9083, Path::new("/srv/www"), "Alias /x \"/y\"").unwrap();
+        let conf = write_apache(&paths, &inst, 8080, 9083, Path::new("/srv/www"), &Sites::default(), "Alias /x \"/y\"").unwrap();
         let text = fs::read_to_string(conf).unwrap();
         assert!(text.contains("LoadModule proxy_fcgi_module"));
         assert!(!text.contains("LoadModule rewrite_module"));
@@ -432,7 +515,77 @@ mod tests {
         // Windows needs the trailing slash so the drive letter does not end up in the port.
         assert_eq!(text.contains("proxy:fcgi://127.0.0.1:9083/\""), cfg!(windows));
         assert!(text.contains("Alias /x"));
+        assert!(!text.contains("<VirtualHost"), "no projects, no virtual hosts");
         assert!(!text.contains("{{"), "no placeholders may remain");
+    }
+
+    #[test]
+    fn apache_conf_adds_a_virtual_host_per_project_after_localhost() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(tmp.path().join("data"));
+        let inst = Installation {
+            tool: Tool::Apache,
+            id: "2.4.69".into(),
+            version: "2.4.69".into(),
+            root: tmp.path().join("httpd"),
+            system: false,
+        };
+        let sites = Sites {
+            vhosts: vec![
+                Vhost { domain: "blog.localhost".into(), docroot: "/srv/blog/public".into(), php_port: 9082, https: false },
+                Vhost { domain: "shop.localhost".into(), docroot: "/srv/shop".into(), php_port: 9084, https: false },
+            ],
+            tls: None,
+        };
+        let conf = write_apache(&paths, &inst, 8080, 9084, Path::new("/srv/www"), &sites, "").unwrap();
+        let text = fs::read_to_string(conf).unwrap();
+        assert_eq!(text.matches("<VirtualHost 127.0.0.1:8080>").count(), 3);
+        let (default, blog, shop) = (
+            text.find("ServerName localhost\n").unwrap(),
+            text.find("ServerName blog.localhost").unwrap(),
+            text.find("ServerName shop.localhost").unwrap(),
+        );
+        assert!(default < blog && blog < shop, "localhost must be the first (default) virtual host");
+        assert!(text.contains("DocumentRoot \"/srv/blog/public\""));
+        assert!(text.contains("<Directory \"/srv/blog/public\">"));
+        let blog_block = &text[blog..shop];
+        assert!(blog_block.contains("proxy:fcgi://127.0.0.1:9082"), "{blog_block}");
+        assert!(text[shop..].contains("proxy:fcgi://127.0.0.1:9084"));
+        assert!(!text.contains("SSLEngine") && !text.contains("ssl_module"), "no HTTPS unless a project asks for it");
+        assert!(!text.contains("{{"));
+    }
+
+    #[test]
+    fn apache_conf_serves_https_projects_with_the_local_certificate() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(tmp.path().join("data"));
+        let root = tmp.path().join("httpd");
+        fs::create_dir_all(root.join("modules")).unwrap();
+        let inst = Installation { tool: Tool::Apache, id: "2.4.69".into(), version: "2.4.69".into(), root: root.clone(), system: false };
+        let cert = ServerCert { cert: "/certs/server.pem".into(), key: "/certs/server.key".into() };
+        let sites = Sites {
+            vhosts: vec![
+                Vhost { domain: "plain.localhost".into(), docroot: "/srv/plain".into(), php_port: 9084, https: false },
+                Vhost { domain: "secure.localhost".into(), docroot: "/srv/secure".into(), php_port: 9082, https: true },
+            ],
+            tls: Some(Tls { port: 8443, cert }),
+        };
+        let err = write_apache(&paths, &inst, 8080, 9084, Path::new("/srv/www"), &sites, "").unwrap_err();
+        assert!(matches!(err, Error::Tls(_)), "an Apache without mod_ssl cannot serve HTTPS: {err}");
+
+        fs::write(root.join("modules/mod_ssl.so"), "").unwrap();
+        let text = fs::read_to_string(write_apache(&paths, &inst, 8080, 9084, Path::new("/srv/www"), &sites, "").unwrap()).unwrap();
+        assert!(text.contains("LoadModule ssl_module"));
+        assert!(text.contains("Listen 127.0.0.1:8443"));
+        assert_eq!(text.matches("<VirtualHost 127.0.0.1:8080>").count(), 3, "every project keeps plain HTTP");
+        assert_eq!(text.matches("<VirtualHost 127.0.0.1:8443>").count(), 2, "localhost and the HTTPS project");
+        let https = &text[text.find("<VirtualHost 127.0.0.1:8443>").unwrap()..];
+        assert!(https.find("ServerName localhost").unwrap() < https.find("ServerName secure.localhost").unwrap());
+        assert!(!https.contains("plain.localhost"));
+        assert_eq!(https.matches("SSLEngine on").count(), 2);
+        assert!(https.contains("SSLCertificateFile \"/certs/server.pem\""));
+        assert!(https.contains("SSLCertificateKeyFile \"/certs/server.key\""));
+        assert!(https.contains("proxy:fcgi://127.0.0.1:9082"));
     }
 
     #[test]
