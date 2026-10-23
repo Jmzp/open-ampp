@@ -151,3 +151,20 @@ fn project_add_list_and_remove() {
     assert!(!ampp(tmp.path(), &["project", "rm", "blog"]).status.success());
     assert!(site.is_dir(), "the folder is never deleted");
 }
+
+#[test]
+fn https_projects_must_use_localhost() {
+    let (tmp, paths) = home_with_two_phps();
+    let site = tmp.path().join("site");
+    std::fs::create_dir_all(&site).unwrap();
+    let dir = site.to_str().unwrap();
+
+    let out = ampp(tmp.path(), &["project", "add", "secure", dir, "--https"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+    assert!(stdout(&out).contains("secure → https://secure.localhost:8443/"), "{}", stdout(&out));
+    assert!(State::load(&paths.state_file()).unwrap().projects[0].https);
+
+    let out = ampp(tmp.path(), &["project", "add", "other", dir, "--domain", "other.test", "--https"]);
+    assert!(!out.status.success());
+    assert!(stderr(&out).contains(".localhost"), "{}", stderr(&out));
+}

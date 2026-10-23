@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { api, errorMessage, type Project, type ProjectInfo, type ProjectsInfo } from "../lib/api";
+import { api, errorMessage, type Project, type ProjectInfo, type ProjectsInfo, type TlsInfo } from "../lib/api";
 import { t } from "../lib/i18n";
 
 /** Same rule as the Rust side (`projects::suggested_domain`): "My Blog" → "my-blog.localhost". */
@@ -25,16 +25,14 @@ interface Draft {
 
 export function Projects({ onChanged }: { onChanged: () => void }) {
   const [info, setInfo] = useState<ProjectsInfo | null>(null);
+  const [tls, setTls] = useState<TlsInfo | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
   const load = () =>
-    api
-      .getProjects()
-      .then(setInfo)
-      .catch((e) => setError(errorMessage(e)));
+    Promise.all([api.getProjects().then(setInfo), api.getTls().then(setTls)]).catch((e) => setError(errorMessage(e)));
 
   useEffect(() => {
     load();
@@ -57,7 +55,9 @@ export function Projects({ onChanged }: { onChanged: () => void }) {
 
   const save = (d: Draft) =>
     run(async () => {
-      const restarted = await api.saveProject(d.previous, d.project);
+      // HTTPS only applies to .localhost domains; drop it if the domain changed to another one.
+      const project = { ...d.project, https: d.project.https && d.project.domain.trim().toLowerCase().endsWith(".localhost") };
+      const restarted = await api.saveProject(d.previous, project);
       setDraft(null);
       return restarted ? t.projects.savedRestarted : t.projects.saved;
     });
@@ -102,6 +102,7 @@ export function Projects({ onChanged }: { onChanged: () => void }) {
         <ProjectForm
           draft={draft}
           info={info}
+          httpsPort={tls?.https_port ?? 8443}
           busy={busy}
           onChange={setDraft}
           onSave={() => save(draft)}
@@ -132,6 +133,7 @@ export function Projects({ onChanged }: { onChanged: () => void }) {
                       {p.url.replace("http://", "").replace(/\/$/, "")}
                     </a>
                     <span className="chip">PHP {p.php_version ?? info.active_series ?? "—"}</span>
+                    {p.https && <span className="chip">HTTPS</span>}
                   </div>
                   <span className="muted small project-path" title={p.docroot}>
                     {p.docroot}
@@ -156,13 +158,81 @@ export function Projects({ onChanged }: { onChanged: () => void }) {
           </ul>
         )}
       </section>
+
+      {tls?.used && <TlsPanel tls={tls} onChanged={load} />}
     </div>
+  );
+}
+
+function TlsPanel({ tls, onChanged }: { tls: TlsInfo; onChanged: () => Promise<unknown> }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  const trust = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.trustCa();
+      setDone(true);
+      await onChanged();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const status =
+    tls.trusted === null ? (
+      <span className="badge muted-badge">{t.projects.tls.unknown}</span>
+    ) : tls.trusted ? (
+      <span className="badge">{t.projects.tls.trusted}</span>
+    ) : (
+      <span className="badge warn-badge">{t.projects.tls.notTrusted}</span>
+    );
+
+  return (
+    <section className="panel">
+      <div className="panel-head">
+        <h3>{t.projects.tls.title}</h3>
+        {status}
+      </div>
+      <p className="muted small">{t.projects.tls.intro}</p>
+      {error && <pre className="error-box">{error}</pre>}
+      {done && <p className="ok-text small">{t.projects.tls.trustedDone}</p>}
+      {tls.linux_commands ? (
+        <>
+          <p className="muted small">{t.projects.tls.linux}</p>
+          <pre className="snippet">{tls.linux_commands}</pre>
+        </>
+      ) : (
+        tls.trusted === false && (
+          <>
+            <p className="muted small">{t.projects.tls.untrustedHint}</p>
+            <div className="save-row">
+              <span className="muted small">{t.projects.tls.trustHint}</span>
+              <button className="inline" disabled={busy} onClick={trust}>
+                {busy ? t.projects.tls.trusting : t.projects.tls.trust}
+              </button>
+            </div>
+          </>
+        )
+      )}
+      <p className="muted small">{t.projects.tls.firefox}</p>
+      <div className="actions">
+        <button className="secondary" onClick={() => api.openLocation("certs")}>
+          {t.projects.tls.folder}
+        </button>
+      </div>
+    </section>
   );
 }
 
 function ProjectForm({
   draft,
   info,
+  httpsPort,
   busy,
   onChange,
   onSave,
@@ -170,6 +240,7 @@ function ProjectForm({
 }: {
   draft: Draft;
   info: ProjectsInfo;
+  httpsPort: number;
   busy: boolean;
   onChange: (d: Draft) => void;
   onSave: () => void;
@@ -196,6 +267,8 @@ function ProjectForm({
 
   const domain = project.domain.trim().toLowerCase();
   const complete = project.name.trim() && domain && project.docroot;
+  // Same rule as the Rust side (`projects::https_allowed`): the local CA only signs .localhost.
+  const httpsAllowed = domain.endsWith(".localhost");
 
   return (
     <section className="panel">
@@ -248,6 +321,18 @@ function ProjectForm({
               <option value={project.php}>PHP {project.php}</option>
             )}
           </select>
+        </label>
+        <label className="check-field">
+          <input
+            type="checkbox"
+            checked={project.https && httpsAllowed}
+            disabled={!httpsAllowed}
+            onChange={(e) => set({ https: e.target.checked })}
+          />
+          <span>
+            {t.projects.https}
+            <small className="muted">{httpsAllowed ? t.projects.httpsHint(httpsPort) : t.projects.httpsOnlyLocalhost}</small>
+          </span>
         </label>
       </div>
       <div className="save-row">

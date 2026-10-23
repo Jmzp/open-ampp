@@ -14,6 +14,7 @@ pub mod ports;
 pub mod projects;
 pub mod services;
 pub mod state;
+pub mod tls;
 pub mod tools;
 
 pub use catalog::{Manifest, Package, Platform};

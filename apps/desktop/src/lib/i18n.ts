@@ -55,6 +55,25 @@ const es = {
     savedRestarted: "Guardado. Apache se reinició para aplicarlo.",
     saved: "Guardado. Se aplicará al iniciar Apache.",
     removed: "Proyecto quitado.",
+    https: "Servir también por HTTPS",
+    httpsHint: (port: number) => `Con un certificado de la CA local, en el puerto ${port}.`,
+    httpsOnlyLocalhost: "HTTPS solo está disponible para dominios .localhost.",
+    tls: {
+      title: "HTTPS local",
+      intro:
+        "Open AMPP creó una autoridad de certificados (CA) solo para esta máquina. Únicamente puede firmar nombres localhost, así que confiar en ella no pone en riesgo ningún otro sitio.",
+      trusted: "De confianza",
+      notTrusted: "Sin confianza",
+      unknown: "Estado desconocido",
+      trust: "Confiar en la CA local",
+      trusting: "Esperando confirmación…",
+      trustHint: "El sistema te pedirá confirmarlo. Luego reinicia el navegador.",
+      trustedDone: "Listo: la CA es de confianza. Reinicia el navegador si tenías abierta la página.",
+      untrustedHint: "Mientras tanto el navegador mostrará un aviso de certificado no válido.",
+      linux: "En Linux hay que agregarla con sudo. Ejecuta lo que corresponda a tu sistema:",
+      firefox: "Firefox puede usar su propio almacén: si sigue avisando, importa ca.pem en Ajustes → Privacidad y seguridad → Certificados.",
+      folder: "Ver certificado ↗",
+    },
   },
 
   database: {
@@ -224,6 +243,25 @@ const en: Messages = {
     savedRestarted: "Saved. Apache was restarted to apply it.",
     saved: "Saved. It will apply when Apache starts.",
     removed: "Project removed.",
+    https: "Also serve over HTTPS",
+    httpsHint: (port) => `With a certificate from the local CA, on port ${port}.`,
+    httpsOnlyLocalhost: "HTTPS is only available for .localhost domains.",
+    tls: {
+      title: "Local HTTPS",
+      intro:
+        "Open AMPP created a certificate authority (CA) for this machine only. It can only sign localhost names, so trusting it puts no other site at risk.",
+      trusted: "Trusted",
+      notTrusted: "Not trusted",
+      unknown: "Unknown status",
+      trust: "Trust the local CA",
+      trusting: "Waiting for confirmation…",
+      trustHint: "The system will ask you to confirm. Then restart your browser.",
+      trustedDone: "Done: the CA is trusted. Restart your browser if the page was open.",
+      untrustedHint: "Until then the browser shows an invalid certificate warning.",
+      linux: "On Linux it has to be added with sudo. Run the one for your system:",
+      firefox: "Firefox may use its own store: if it still warns, import ca.pem in Settings → Privacy & Security → Certificates.",
+      folder: "View certificate ↗",
+    },
   },
 
   database: {

@@ -26,7 +26,7 @@ Several versions of each tool, a friendly desktop app, and the same workflow on 
 Open AMPP is a modern take on XAMPP / MAMP / LAMPP. Open the app, pick the versions you want, and one click later you have a web server with PHP and a database running on your machine.
 
 - 🧩 **Multi-version**: install PHP 8.2, 8.3, 8.4 and 8.5 (and several MariaDB versions) side by side and switch whenever you like.
-- 🌐 **Projects**: serve any folder at its own `*.localhost` domain, each with its own PHP version, with no hosts file to edit.
+- 🌐 **Projects**: serve any folder at its own `*.localhost` domain, each with its own PHP version and optional HTTPS, with no hosts file to edit.
 - 🐘 **XAMPP-flavoured PHP**: the default `php.ini` is XAMPP's, with its extensions (`mysqli`, `pdo_mysql`, `mbstring`, `curl`, `openssl`…) plus `intl`, `gd`, `zip`, `sodium` and `opcache`.
 - 🗄️ **phpMyAdmin and Composer** one click away, already wired to the active versions.
 - 📦 **Nothing installed system-wide**: the app downloads its own portable, SHA-256-verified binaries into its data folder. It does not touch Homebrew, `apt` or the Windows registry.
@@ -111,6 +111,8 @@ ampp upgrade                # move installed versions to their newest patch rele
 ampp use php 8.3.36         # active version
 ampp project add blog ~/sites/blog/public --php 8.2   # http://blog.localhost:8080
 ampp project ls             # also: ampp project rm blog
+ampp project add shop ~/sites/shop --https            # https://shop.localhost:8443
+ampp trust                  # trust the local CA that signs the HTTPS projects
 ampp php -v                 # passthrough to the active PHP (same for composer and mariadb)
 ```
 
@@ -124,6 +126,16 @@ The **Projects** tab serves any folder at its own domain, such as `http://blog.l
 - A project stores the PHP **series** (`8.2`), so `ampp upgrade` and **Update to …** keep it working.
 - `localhost` and any unknown domain keep serving `www/` and phpMyAdmin.
 - Removing a project only stops serving it: its folder is never deleted.
+
+### 🔒 HTTPS
+
+Tick **Also serve over HTTPS** on a project and it is also served at `https://<domain>:8443`. Open AMPP creates a certificate authority (CA) for your machine the first time, and one certificate for the HTTPS domains, renewed by itself.
+
+- The CA carries **name constraints**: it can only sign `localhost`, `*.localhost` and `127.0.0.0/8`. Trusting it puts no other site at risk, even if its key were stolen. For the same reason HTTPS is only offered for `.localhost` domains.
+- **Trust the local CA** (in the Projects tab, or `ampp trust`) adds it to your user's trust store: the login keychain on macOS (it asks for your password), the current user's store on Windows (it asks for confirmation). No administrator rights are needed. Restart the browser afterwards.
+- On Linux the app shows the `sudo` commands to add it to the system store and to the NSS store that Chrome and Firefox use.
+- Firefox may keep its own store: if it still warns, import `certs/local/ca.pem` in **Settings → Privacy & Security → Certificates**.
+- `mod_ssl` is only loaded when some project uses HTTPS, so plain HTTP never depends on it.
 
 ## 🐘 PHP configuration
 
@@ -164,6 +176,7 @@ config/<tool>/<version>/    generated httpd.conf, php.ini, php-fpm.conf, my.cnf
 data/mariadb/<major.minor>/ MariaDB data (one per version so formats never mix)
 tools/                      phpMyAdmin and Composer
 shims/                      php, composer, mariadb, ampp… for the terminal
+certs/local/                local CA and the HTTPS certificate of the projects
 www/                        your DocumentRoot
 logs/                       one log per service (also visible in the app)
 state.json                  installed/active versions, ports and PHP settings
@@ -232,7 +245,7 @@ Pushing a `v*` tag runs the **Release** workflow: it builds the installers for e
 - [x] **Polish**: tray icon, `php.ini` and extensions editor, phpMyAdmin, Composer, `ampp` CLI, English/Spanish UI
 - [x] **Distribution**: installers (DMG, MSI/NSIS, AppImage/deb/rpm) and auto-update
 - [x] **Projects**: `*.localhost` domains, per-project PHP version
-- [ ] **HTTPS** for projects with a local CA
+- [x] **HTTPS** for projects with a name-constrained local CA
 - [ ] Apple Developer ID and Windows code signing
 
 ## 🤝 Contributing

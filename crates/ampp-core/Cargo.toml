@@ -20,6 +20,8 @@ tar = "0.4"
 sysinfo = { version = "0.33", default-features = false, features = ["system"] }
 tokio = { version = "1", features = ["fs", "io-util", "macros", "net", "process", "rt", "sync", "time"] }
 zip = { version = "2", default-features = false, features = ["deflate"] }
+rcgen = { version = "0.14.10", default-features = false, features = ["pem", "ring"] }
+time = "0.3"
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.29", features = ["signal"] }

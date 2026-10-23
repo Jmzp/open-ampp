@@ -138,6 +138,9 @@ select { font: inherit; color: var(--text); background: var(--bg); border: 1px s
 .project-title a:hover { text-decoration: underline; }
 .project-path { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .project .actions { flex-wrap: wrap; justify-content: flex-end; }
+.check-field { display: flex; align-items: flex-start; gap: 8px; font-size: 0.9rem; }
+.check-field small { display: block; }
+.warn-badge { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
 
 /* Update banner */
 .banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding: 10px 14px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); font-size: 0.9rem; }

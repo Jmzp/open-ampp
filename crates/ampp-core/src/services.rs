@@ -487,9 +487,14 @@ impl Supervisor {
                 let docroot = config::ensure_docroot(&self.paths)?;
                 let extra = tools::phpmyadmin_apache_conf(&self.paths, state.ports.mariadb)?;
                 let php_port = php_port(state)?;
-                let vhosts = projects::vhosts(&self.paths, state, php_port);
+                let sites = projects::sites(&self.paths, state, php_port)?;
+                if let Some(tls) = &sites.tls {
+                    if !ports::is_free(tls.port) {
+                        return Err(Error::PortInUse { tool: Tool::Apache, port: tls.port });
+                    }
+                }
                 let conf =
-                    config::write_apache(&self.paths, inst, state.ports.http, php_port, &docroot, &vhosts, &extra)?;
+                    config::write_apache(&self.paths, inst, state.ports.http, php_port, &docroot, &sites, &extra)?;
                 let mut args = vec!["-f".into(), path_arg(&conf)];
                 if !cfg!(windows) {
                     args.push("-DFOREGROUND".into());

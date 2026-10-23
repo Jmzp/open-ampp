@@ -1,12 +1,13 @@
 //! Projects: sites served on their own domain (`blog.localhost`) from any folder, each one with
 //! its own PHP version. Browsers resolve `*.localhost` to 127.0.0.1, so no hosts file is needed.
 
-use crate::config::Vhost;
+use crate::config::{Sites, Tls, Vhost};
 use crate::error::{Error, Result};
 use crate::install::{self, Installation};
 use crate::paths::{AppPaths, Tool};
 use crate::ports;
 use crate::state::{Project, State};
+use crate::tls;
 
 /// `major.minor` of a version (`8.2.30` → `8.2`).
 pub fn series(version: &str) -> String {
@@ -48,10 +49,11 @@ pub fn extra_php(paths: &AppPaths, state: &State) -> Vec<Installation> {
     extra
 }
 
-/// Apache virtual hosts for the projects. A project whose PHP series is no longer installed falls
-/// back to the active version instead of failing.
-pub fn vhosts(paths: &AppPaths, state: &State, active_php_port: u16) -> Vec<Vhost> {
-    state
+/// What Apache serves for the projects. A project whose PHP series is no longer installed falls
+/// back to the active version instead of failing. When a project wants HTTPS, the local CA's
+/// server certificate is created or refreshed for the HTTPS domains.
+pub fn sites(paths: &AppPaths, state: &State, active_php_port: u16) -> Result<Sites> {
+    let vhosts: Vec<Vhost> = state
         .projects
         .iter()
         .map(|p| Vhost {
@@ -60,16 +62,30 @@ pub fn vhosts(paths: &AppPaths, state: &State, active_php_port: u16) -> Vec<Vhos
             php_port: php_for(paths, state, p.php.as_deref())
                 .map(|inst| ports::php_fcgi_port(state.ports.php_fcgi_base, &inst.version))
                 .unwrap_or(active_php_port),
+            https: p.https,
         })
-        .collect()
+        .collect();
+    let https: Vec<String> = vhosts.iter().filter(|v| v.https).map(|v| v.domain.clone()).collect();
+    let tls = match https.is_empty() {
+        true => None,
+        false => Some(Tls { port: state.ports.https, cert: tls::ensure_server_cert(paths, &https)? }),
+    };
+    Ok(Sites { vhosts, tls })
 }
 
-/// Address of a project in the browser.
+/// Address of a project in the browser: HTTPS when it has it.
 pub fn url(state: &State, project: &Project) -> String {
-    match state.ports.http {
-        80 => format!("http://{}/", project.domain),
-        port => format!("http://{}:{port}/", project.domain),
+    let (scheme, port, default) =
+        if project.https { ("https", state.ports.https, 443) } else { ("http", state.ports.http, 80) };
+    match port {
+        p if p == default => format!("{scheme}://{}/", project.domain),
+        p => format!("{scheme}://{}:{p}/", project.domain),
     }
+}
+
+/// HTTPS is limited to `.localhost` domains: the local CA cannot sign anything else.
+pub fn https_allowed(domain: &str) -> bool {
+    domain.ends_with(".localhost")
 }
 
 /// A hostname with at least two labels (`blog.localhost`), lowercase, without the bare `localhost`.
@@ -109,6 +125,12 @@ pub fn save(paths: &AppPaths, state: &mut State, previous: Option<&str>, mut pro
     }
     if others().any(|p| p.domain == *domain) {
         return invalid(tr!("{domain} ya lo usa otro proyecto", "{domain} is already used by another project"));
+    }
+    if project.https && !https_allowed(domain) {
+        return invalid(tr!(
+            "HTTPS solo está disponible para dominios .localhost",
+            "HTTPS is only available for .localhost domains"
+        ));
     }
     if !project.docroot.is_absolute() || !project.docroot.is_dir() {
         let dir = project.docroot.display();
@@ -204,8 +226,34 @@ mod tests {
         assert_eq!(ids, ["8.2.35", "8.3.20"]);
 
         state.ports.php_fcgi_base = 9000;
-        let ports: Vec<u16> = vhosts(&paths, &state, 9084).into_iter().map(|v| v.php_port).collect();
+        let sites = sites(&paths, &state, 9084).unwrap();
+        let ports: Vec<u16> = sites.vhosts.iter().map(|v| v.php_port).collect();
         assert_eq!(ports, [9082, 9082, 9084, 9084, 9083]);
+        assert!(sites.tls.is_none(), "no HTTPS project, no certificate");
+        assert!(!tls::ca_cert_path(&paths).exists());
+    }
+
+    #[test]
+    fn https_projects_get_the_local_certificate() {
+        let (tmp, paths, mut state) = env(&["8.4.27"]);
+        let mut secure = project("secure", tmp.path(), None);
+        secure.https = true;
+        save(&paths, &mut state, None, secure).unwrap();
+        save(&paths, &mut state, None, project("plain", tmp.path(), None)).unwrap();
+        assert_eq!(url(&state, &state.projects[1]), "https://secure.localhost:8443/");
+        state.ports.https = 443;
+        assert_eq!(url(&state, &state.projects[1]), "https://secure.localhost/");
+
+        let sites = sites(&paths, &state, 9084).unwrap();
+        let tls = sites.tls.expect("an HTTPS project turns HTTPS on");
+        assert_eq!(tls.port, 443);
+        assert!(tls.cert.cert.exists() && tls.cert.key.exists());
+        assert_eq!(sites.vhosts.iter().filter(|v| v.https).count(), 1);
+
+        let mut outside = project("outside", tmp.path(), None);
+        outside.domain = "outside.test".into();
+        outside.https = true;
+        assert!(matches!(save(&paths, &mut state, None, outside), Err(Error::InvalidProject(_))));
     }
 
     #[test]

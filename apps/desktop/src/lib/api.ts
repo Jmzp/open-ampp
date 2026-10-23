@@ -66,6 +66,18 @@ export interface PhpConfig {
   ini_path: string | null;
 }
 
+export interface TlsInfo {
+  /** Some project uses HTTPS. */
+  used: boolean;
+  https_port: number;
+  ca_exists: boolean;
+  ca_path: string;
+  /** `null` when it cannot be told (Linux). */
+  trusted: boolean | null;
+  /** Linux only: commands to trust the CA (they need sudo). */
+  linux_commands: string | null;
+}
+
 export interface ToolsInfo {
   extras: { name: Extra; installed: string | null; available: string | null }[];
   shims_dir: string;
@@ -73,7 +85,7 @@ export interface ToolsInfo {
   commands: string[];
 }
 
-export type Location = "www" | "data" | "logs" | "php_ini";
+export type Location = "www" | "data" | "logs" | "php_ini" | "certs";
 
 export interface MariadbInfo {
   connection: { host: string; port: number; user: string; password: string; socket: string | null };
@@ -171,6 +183,9 @@ export const api = {
   /** Returns `true` if Apache was restarted to apply it. */
   removeProject: (name: string) => invoke<boolean>("remove_project", { name }),
   openProjectFolder: (name: string) => invoke<void>("open_project_folder", { name }),
+  getTls: () => invoke<TlsInfo>("get_tls"),
+  /** Adds the local CA to the user's trust store; the system asks for confirmation. */
+  trustCa: () => invoke<void>("trust_ca"),
   onInstallProgress: (cb: (p: InstallProgress) => void): Promise<UnlistenFn> =>
     listen<InstallProgress>("install-progress", (e) => cb(e.payload)),
   onInstallFinished: (cb: (f: InstallFinished) => void): Promise<UnlistenFn> =>

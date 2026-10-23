@@ -4,7 +4,7 @@ use std::process::ExitCode;
 
 use ampp_core::catalog::compare_versions;
 use ampp_core::state::Project;
-use ampp_core::{AppPaths, Extra, Manifest, Platform, State, Supervisor, Tool, installer, projects, tools, tr};
+use ampp_core::{AppPaths, Extra, Manifest, Platform, State, Supervisor, Tool, installer, projects, tls, tools, tr};
 use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Parser)]
@@ -35,6 +35,8 @@ enum Cmd {
     /// Sites served on their own domain (blog.localhost) from any folder.
     #[command(subcommand)]
     Project(ProjectCmd),
+    /// Trust the local CA that signs the HTTPS projects (the system asks for confirmation).
+    Trust,
     /// Run the active PHP with the Open AMPP php.ini.
     #[command(disable_help_flag = true)]
     Php {
@@ -76,6 +78,9 @@ enum ProjectCmd {
         /// PHP series, e.g. 8.2 (the active version by default).
         #[arg(long)]
         php: Option<String>,
+        /// Also serve it over HTTPS with the local CA (.localhost domains only).
+        #[arg(long)]
+        https: bool,
     },
     /// Stop serving a project (its folder is not deleted).
     Rm { name: String },
@@ -183,6 +188,7 @@ async fn run(cli: Cli) -> Result<ExitCode> {
             println!("{}", tr!("{tool} {version} activo. Reinicia el servicio si está en marcha.", "{tool} {version} is now active. Restart the service if it is running."));
         }
         Cmd::Project(cmd) => project(&mut ctx, cmd)?,
+        Cmd::Trust => trust(&ctx)?,
         Cmd::Php { args } => return passthrough(&ctx, "php", args),
         Cmd::Composer { args } => return passthrough(&ctx, "composer", args),
         Cmd::Mariadb { args } => return passthrough(&ctx, "mariadb", args),
@@ -410,10 +416,10 @@ fn project(ctx: &mut Ctx, cmd: ProjectCmd) -> Result<()> {
             }
             return Ok(());
         }
-        ProjectCmd::Add { name, folder, domain, php } => {
+        ProjectCmd::Add { name, folder, domain, php, https } => {
             let docroot = std::fs::canonicalize(&folder).unwrap_or_else(|_| folder.into());
             let domain = domain.unwrap_or_else(|| projects::suggested_domain(&name));
-            let project = Project { name: name.clone(), domain, docroot, php, https: false };
+            let project = Project { name: name.clone(), domain, docroot, php, https };
             projects::save(&ctx.paths, &mut ctx.state, None, project)?;
             if let Some(p) = ctx.state.projects.iter().find(|p| p.name == name.trim()) {
                 println!("{} → {}", p.name, projects::url(&ctx.state, p));
@@ -425,6 +431,17 @@ fn project(ctx: &mut Ctx, cmd: ProjectCmd) -> Result<()> {
     }
     ctx.save()?;
     println!("{}", tr!("Listo. Reinicia Apache y PHP para aplicarlo (ampp stop y ampp up).", "Done. Restart Apache and PHP to apply it (ampp stop, then ampp up)."));
+    Ok(())
+}
+
+fn trust(ctx: &Ctx) -> Result<()> {
+    let ca = tls::ca_cert_path(&ctx.paths);
+    if tls::is_trusted(&ctx.paths) == Some(true) {
+        println!("{}", tr!("La CA local ya es de confianza ({}).", "The local CA is already trusted ({}).", ca.display()));
+        return Ok(());
+    }
+    tls::trust(&ctx.paths)?;
+    println!("{}", tr!("Listo: la CA local es de confianza. Reinicia el navegador.", "Done: the local CA is trusted. Restart your browser."));
     Ok(())
 }
 

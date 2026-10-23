@@ -8,7 +8,7 @@ use ampp_core::install::{self, HOMEBREW};
 use ampp_core::state::{PhpSettings, Project};
 use ampp_core::{
     AppPaths, Extra, Manifest, Platform, ServiceStatus, State, Supervisor, Tool, config, installer, projects, services,
-    tools,
+    tls, tools,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
@@ -506,6 +506,10 @@ fn open_location(handle: AppHandle, what: String) -> CommandResult<()> {
         "www" => config::ensure_docroot(&app.paths)?,
         "data" => app.paths.root().to_path_buf(),
         "logs" => app.paths.logs(),
+        "certs" => {
+            tls::ensure_ca(&app.paths)?;
+            tls::ca_cert_path(&app.paths).parent().expect("certs folder").to_path_buf()
+        }
         "php_ini" => {
             let state = app.snapshot();
             let id = state.active.get(&Tool::Php).ok_or(ampp_core::Error::NoActiveVersion(Tool::Php))?;
@@ -597,6 +601,46 @@ async fn save_project(app: tauri::State<'_, AppState>, previous: Option<String>,
 async fn remove_project(app: tauri::State<'_, AppState>, name: String) -> CommandResult<bool> {
     app.update(|s| projects::remove(s, &name).map(drop))?;
     app.apply_projects().await
+}
+
+#[derive(Serialize)]
+struct TlsInfo {
+    /// Some project uses HTTPS.
+    used: bool,
+    https_port: u16,
+    /// The local CA exists (it is created with the first HTTPS project).
+    ca_exists: bool,
+    ca_path: String,
+    /// `None` when it cannot be told (Linux).
+    trusted: Option<bool>,
+    /// Linux only: commands to trust the CA, since that needs `sudo`.
+    linux_commands: Option<String>,
+}
+
+#[tauri::command]
+async fn get_tls(app: tauri::State<'_, AppState>) -> CommandResult<TlsInfo> {
+    let state = app.snapshot();
+    let paths = app.paths.clone();
+    let ca = tls::ca_cert_path(&paths);
+    let trusted = tauri::async_runtime::spawn_blocking(move || tls::is_trusted(&paths)).await.unwrap_or(None);
+    Ok(TlsInfo {
+        used: state.projects.iter().any(|p| p.https),
+        https_port: state.ports.https,
+        ca_exists: ca.exists(),
+        ca_path: ca.display().to_string(),
+        trusted,
+        linux_commands: (!cfg!(windows) && !cfg!(target_os = "macos")).then(|| tls::linux_trust_commands(&ca)),
+    })
+}
+
+/// Adds the local CA to the user's trust store; the system asks for confirmation.
+#[tauri::command]
+async fn trust_ca(app: tauri::State<'_, AppState>) -> CommandResult<()> {
+    let paths = app.paths.clone();
+    tauri::async_runtime::spawn_blocking(move || tls::trust(&paths))
+        .await
+        .map_err(|e| CommandError(e.to_string()))??;
+    Ok(())
 }
 
 #[tauri::command]
@@ -701,6 +745,8 @@ pub fn run() {
             save_project,
             remove_project,
             open_project_folder,
+            get_tls,
+            trust_ca,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
