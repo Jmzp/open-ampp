@@ -113,6 +113,16 @@
     },
     {
       "tool": "mariadb",
+      "version": "12.3.3",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://archive.mariadb.org/mariadb-12.3.3/bintar-linux-systemd-x86_64/mariadb-12.3.3-linux-systemd-x86_64.tar.gz",
+      "sha256": "a12bf7bce08a896cdd01f174f04b4ce1d5da43ec250a5e7fceb9972119514329",
+      "archive": "tar-gz",
+      "size": null
+    },
+    {
+      "tool": "mariadb",
       "version": "10.11.19",
       "os": "macos",
       "arch": "arm64",
@@ -202,6 +212,16 @@
       "size": null
     },
     {
+      "tool": "mariadb",
+      "version": "12.3.3",
+      "os": "windows",
+      "arch": "x64",
+      "url": "https://archive.mariadb.org/mariadb-12.3.3/winx64-packages/mariadb-12.3.3-winx64.zip",
+      "sha256": "4b5706b47148b47c8f36963c8352d1ddee37a1287b4690428f631a74b09b85a0",
+      "archive": "zip",
+      "size": null
+    },
+    {
       "tool": "php",
       "version": "8.2.35",
       "os": "linux",
@@ -230,6 +250,16 @@
       "sha256": "e6ce42ab71c30c2d5785681c570db8f2b52c66a0ab6e3439f4ab552b07435fc6",
       "archive": "tar-gz",
       "size": 52155019
+    },
+    {
+      "tool": "php",
+      "version": "8.5.12",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.12/php-8.5.12-linux-arm64.tar.gz",
+      "sha256": "d89f4a3493d270dd6eb9b6a44817309e7c58c4285c6a9ef1a4472c14b841000e",
+      "archive": "tar-gz",
+      "size": 52841120
     },
     {
       "tool": "php",
@@ -263,6 +293,16 @@
     },
     {
       "tool": "php",
+      "version": "8.5.12",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.12/php-8.5.12-linux-x64.tar.gz",
+      "sha256": "7572b2ef0fb6798e750fd3291e12ff322a8eab5c51ce2318b8c7d3a461159c37",
+      "archive": "tar-gz",
+      "size": 52539959
+    },
+    {
+      "tool": "php",
       "version": "8.2.35",
       "os": "macos",
       "arch": "arm64",
@@ -290,6 +330,16 @@
       "sha256": "634c28062a106660eb8de7e2f8d7adf68a6ca730064bdbc68600ad010ee79572",
       "archive": "tar-gz",
       "size": 52562783
+    },
+    {
+      "tool": "php",
+      "version": "8.5.12",
+      "os": "macos",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.12/php-8.5.12-macos-arm64.tar.gz",
+      "sha256": "742c1ad1f7482f85c3d8f8d0d293ca0044da84a4abea2317a750b76c678c85d0",
+      "archive": "tar-gz",
+      "size": 53385437
     },
     {
       "tool": "php",
@@ -323,6 +373,16 @@
     },
     {
       "tool": "php",
+      "version": "8.5.12",
+      "os": "macos",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.12/php-8.5.12-macos-x64.tar.gz",
+      "sha256": "3a192cd4a64fe430933f5594c6ce44798e7c77f20104c6ac4961ee7cefbdb0aa",
+      "archive": "tar-gz",
+      "size": 54532011
+    },
+    {
+      "tool": "php",
       "version": "8.2.35",
       "os": "windows",
       "arch": "x64",
@@ -348,6 +408,16 @@
       "arch": "x64",
       "url": "https://downloads.php.net/~windows/releases/php-8.4.27-nts-Win32-vs17-x64.zip",
       "sha256": "93bd8a815a52156606fb906d0573437908c61f96e2cc52c03a51e36a41bf5236",
+      "archive": "zip",
+      "size": null
+    },
+    {
+      "tool": "php",
+      "version": "8.5.12",
+      "os": "windows",
+      "arch": "x64",
+      "url": "https://downloads.php.net/~windows/releases/php-8.5.12-nts-Win32-vs17-x64.zip",
+      "sha256": "2ab242af38d76bdf417cde5ec048b1bcd76a5a40f39a3d15d5f046f38571c477",
       "archive": "zip",
       "size": null
     }
