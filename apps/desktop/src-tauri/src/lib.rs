@@ -324,6 +324,13 @@ async fn restart_service(app: tauri::State<'_, AppState>, tool: Tool) -> Command
 #[tauri::command]
 async fn start_all(app: tauri::State<'_, AppState>) -> CommandResult<Vec<String>> {
     let state = app.snapshot();
+    // Without any version there is nothing to start: say why instead of silently doing nothing.
+    if state.active.is_empty() {
+        return Err(CommandError(tr!(
+            "No hay nada que iniciar: aún no instalaste ninguna versión. Instala Apache, PHP y MariaDB en Versiones.",
+            "There is nothing to start: no version is installed yet. Install Apache, PHP and MariaDB in Versions."
+        )));
+    }
     let failures = app.supervisor.start_all(&state).await;
     Ok(failures.into_iter().map(|(_, e)| e.to_string()).collect())
 }
