@@ -33,13 +33,13 @@ jobs:
     runs-on: ${{ matrix.runner }}
     container: ${{ matrix.container }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Dependencies (Linux)
         if: runner.os == 'Linux'
         run: binaries/linux-deps.sh
       - name: Build
         run: WORK="$RUNNER_TEMP/work" binaries/build-apache.sh dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: apache-${{ matrix.runner }}
           path: dist/*.tar.gz
@@ -59,7 +59,7 @@ jobs:
     container: ${{ matrix.platform.container }}
     timeout-minutes: 180
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Dependencies (Linux)
         if: runner.os == 'Linux'
         run: binaries/linux-deps.sh
@@ -74,7 +74,7 @@ jobs:
           # Only the versions not published yet are built.
           SKIP_EXISTING: "1"
         run: WORK="$RUNNER_TEMP/work" binaries/build-mariadb.sh "${{ matrix.version }}" dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: mariadb-${{ matrix.version }}-${{ matrix.platform.runner }}
           path: dist/*.tar.gz
@@ -93,7 +93,7 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 150
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Build
         env:
           # Avoids GitHub API rate limits while static-php-cli downloads sources.
@@ -101,7 +101,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           SKIP_EXISTING: "1"
         run: WORK="$RUNNER_TEMP/work" binaries/build-php.sh "${{ matrix.version }}" dist
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: php-${{ matrix.version }}-${{ matrix.runner }}
           path: dist/*.tar.gz
@@ -113,8 +113,8 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
         with:
           path: dist
           merge-multiple: true
