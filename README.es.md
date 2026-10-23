@@ -40,7 +40,7 @@ Open AMPP es una alternativa moderna a XAMPP / MAMP / LAMPP. Abres la app, elige
 
 | | Windows x64 | macOS (Intel / Apple Silicon) | Linux (x64 / arm64) |
 |---|:---:|:---:|:---:|
-| **PHP** 8.2 · 8.3 · 8.4 · 8.8 | ✅ | ✅ | ✅ |
+| **PHP** 8.2 · 8.3 · 8.4 · 8.5 | ✅ | ✅ | ✅ |
 | **MariaDB** 10.11 · 11.4 · 11.8 · 12.3 (LTS) | ✅ | ✅ | ✅ |
 | **Apache** 2.4 | ✅ | ✅ | ✅ |
 | **phpMyAdmin** · **Composer** | ✅ | ✅ | ✅ |
