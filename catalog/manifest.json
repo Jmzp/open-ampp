@@ -83,6 +83,16 @@
     },
     {
       "tool": "mariadb",
+      "version": "12.3.3",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-12.3.3/mariadb-12.3.3-linux-arm64.tar.gz",
+      "sha256": "3b6aa593cf8a29382f80b74da7654fffa6f43bf261287af4f794666fa4d25383",
+      "archive": "tar-gz",
+      "size": 109069185
+    },
+    {
+      "tool": "mariadb",
       "version": "10.11.19",
       "os": "linux",
       "arch": "x64",
@@ -116,10 +126,10 @@
       "version": "12.3.3",
       "os": "linux",
       "arch": "x64",
-      "url": "https://archive.mariadb.org/mariadb-12.3.3/bintar-linux-systemd-x86_64/mariadb-12.3.3-linux-systemd-x86_64.tar.gz",
-      "sha256": "a12bf7bce08a896cdd01f174f04b4ce1d5da43ec250a5e7fceb9972119514329",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-12.3.3/mariadb-12.3.3-linux-x64.tar.gz",
+      "sha256": "cb54cf3f866f54ff172b8c76575b6e20c29ae8048d6dcdf2df63fd64b0628043",
       "archive": "tar-gz",
-      "size": null
+      "size": 103132397
     },
     {
       "tool": "mariadb",
@@ -153,6 +163,16 @@
     },
     {
       "tool": "mariadb",
+      "version": "12.3.3",
+      "os": "macos",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-12.3.3/mariadb-12.3.3-macos-arm64.tar.gz",
+      "sha256": "708b2c6c3b913c103e7b06967726418f90465f2fea47a25fb52366d97b6399a4",
+      "archive": "tar-gz",
+      "size": 95944643
+    },
+    {
+      "tool": "mariadb",
       "version": "10.11.19",
       "os": "macos",
       "arch": "x64",
@@ -180,6 +200,16 @@
       "sha256": "f4b193dbe9c98d4ae861d89e09c23e13ec24efb2de15fd7e13291a70cc7b4823",
       "archive": "tar-gz",
       "size": 91415994
+    },
+    {
+      "tool": "mariadb",
+      "version": "12.3.3",
+      "os": "macos",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-12.3.3/mariadb-12.3.3-macos-x64.tar.gz",
+      "sha256": "d3e4939307eb11a54e213b5499e5c0e3829918fc6f55792ae6978367e2ba082e",
+      "archive": "tar-gz",
+      "size": 92441057
     },
     {
       "tool": "mariadb",
