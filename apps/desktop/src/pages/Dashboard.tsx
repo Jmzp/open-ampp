@@ -6,6 +6,7 @@ import {
   TOOL_LABELS,
   versionLabel,
   type AppState,
+  type ProjectInfo,
   type ServiceStatus,
   type Tool,
 } from "../lib/api";
@@ -20,7 +21,12 @@ export function Dashboard({ state, onManage }: { state: AppState; onManage: () =
   const [busy, setBusy] = useState<Set<Tool | "all">>(new Set());
   const [errors, setErrors] = useState<string[]>([]);
 
-  const refresh = () => api.serviceStatus().then(setStatuses).catch(() => {});
+  const [projects, setProjects] = useState<ProjectInfo[]>([]);
+
+  const refresh = () =>
+    Promise.all([api.serviceStatus().then(setStatuses), api.getProjects().then((p) => setProjects(p.projects))]).catch(
+      () => {},
+    );
   usePolling(refresh, 2000);
 
   const run = async (key: Tool | "all", action: () => Promise<unknown>) => {
@@ -101,8 +107,20 @@ export function Dashboard({ state, onManage }: { state: AppState; onManage: () =
                 <dt>{t.dashboard.pid}</dt>
                 <dd>{s?.pid ?? "—"}</dd>
               </dl>
-              {running && !!s?.extra_versions.length && (
-                <p className="muted small">{t.dashboard.alsoRunning(s.extra_versions.join(", "))}</p>
+              {running && !!s?.extra_php.length && (
+                <div className="pools">
+                  <span className="pools-title">{t.dashboard.forProjects}</span>
+                  <ul>
+                    {s.extra_php.map((e) => (
+                      <li key={e.version} title={e.pid ? `PID ${e.pid}` : undefined}>
+                        <span className="dot running" />
+                        <span className="pool-version">{e.version}</span>
+                        <span className="muted">:{e.port}</span>
+                        <PoolProjects names={projects.filter((p) => p.php_version === e.version).map((p) => p.name)} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
               {s?.error && !running && <p className="error small">{s.error.split("\n")[0]}</p>}
               {!active ? (
@@ -130,5 +148,16 @@ export function Dashboard({ state, onManage }: { state: AppState; onManage: () =
 
       <DatabasePanel state={state} running={!!status("mariadb")?.running} />
     </>
+  );
+}
+
+/** Projects served by a PHP version: the first few names, then a count. */
+function PoolProjects({ names }: { names: string[] }) {
+  const shown = names.slice(0, 2);
+  return (
+    <span className="pool-projects muted" title={names.join(", ")}>
+      {names.length === 0 ? t.dashboard.noProjects : shown.join(" · ")}
+      {names.length > shown.length && ` ${t.dashboard.more(names.length - shown.length)}`}
+    </span>
   );
 }

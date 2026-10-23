@@ -116,8 +116,8 @@ export interface ServiceStatus {
   error: string | null;
   /** Launched from a terminal (`ampp up`). */
   external: boolean;
-  /** PHP only: other versions running for projects. */
-  extra_versions: string[];
+  /** PHP only: other versions running for projects, newest first. */
+  extra_php: { version: string; port: number; pid: number | null }[];
 }
 
 export const HOMEBREW = "homebrew";

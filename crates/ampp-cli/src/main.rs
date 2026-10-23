@@ -217,7 +217,7 @@ async fn status(ctx: &Ctx, sup: &Supervisor) {
         let name = s.tool.label();
         if s.running {
             let port = s.port.map(|p| tr!(" en el puerto {p}", " on port {p}")).unwrap_or_default();
-            let extra = match s.extra_versions.join(", ") {
+            let extra = match s.extra_php.iter().map(|e| e.version.as_str()).collect::<Vec<_>>().join(", ") {
                 v if v.is_empty() => String::new(),
                 v => tr!(" (+{v} para proyectos)", " (+{v} for projects)"),
             };

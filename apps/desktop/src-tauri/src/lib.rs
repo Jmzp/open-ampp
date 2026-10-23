@@ -241,7 +241,7 @@ async fn uninstall_package(app: tauri::State<'_, AppState>, tool: Tool, version:
     }
     let active = app.snapshot().active.get(&tool) == Some(&version);
     let in_use = app.supervisor.status().await.iter().any(|s| {
-        s.tool == tool && s.running && (active || s.extra_versions.contains(&version))
+        s.tool == tool && s.running && (active || s.extra_php.iter().any(|e| e.version == version))
     });
     if in_use {
         return Err(CommandError(tr!(
@@ -271,7 +271,7 @@ async fn upgrade_package(handle: AppHandle, tool: Tool, version: String) -> Comm
 
     install_package(handle.clone(), tool, new.clone()).await?;
     let serves_project =
-        app.supervisor.status().await.iter().any(|s| s.tool == tool && s.extra_versions.contains(&version));
+        app.supervisor.status().await.iter().any(|s| s.tool == tool && s.extra_php.iter().any(|e| e.version == version));
     if app.snapshot().active.get(&tool) == Some(&version) {
         app.update(|s| s.set_active(tool, &new))?;
         app.restart_if_running(tool).await?;
@@ -280,7 +280,7 @@ async fn upgrade_package(handle: AppHandle, tool: Tool, version: String) -> Comm
     }
     // Keep the old version if something launched from a terminal still runs it.
     let in_use = app.supervisor.status().await.iter().any(|s| {
-        s.tool == tool && s.running && (s.version.as_deref() == Some(&version) || s.extra_versions.contains(&version))
+        s.tool == tool && s.running && (s.version.as_deref() == Some(&version) || s.extra_php.iter().any(|e| e.version == version))
     });
     if !in_use {
         installer::uninstall(&app.paths, tool, &version)?;

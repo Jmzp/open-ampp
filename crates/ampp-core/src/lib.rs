@@ -20,6 +20,6 @@ pub mod tools;
 pub use catalog::{Manifest, Package, Platform};
 pub use error::{Error, Result};
 pub use paths::{AppPaths, Tool};
-pub use services::{ServiceStatus, Supervisor};
+pub use services::{ExtraPhp, ServiceStatus, Supervisor};
 pub use state::State;
 pub use tools::Extra;

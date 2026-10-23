@@ -364,7 +364,10 @@ async fn projects_run_their_own_php_version(mut env: Env) {
     assert!(ports::is_open(env.php_port()).await && ports::is_open(old_port).await, "both PHP versions must run");
     let status = sup.status().await;
     let php_status = status.iter().find(|s| s.tool == Tool::Php).unwrap();
-    assert_eq!((php_status.version.as_deref(), php_status.extra_versions.as_slice()), (Some(PHP), [PHP_OLD.to_string()].as_slice()));
+    assert_eq!(php_status.version.as_deref(), Some(PHP));
+    let extra: Vec<(&str, u16)> = php_status.extra_php.iter().map(|e| (e.version.as_str(), e.port)).collect();
+    assert_eq!(extra, [(PHP_OLD, old_port)]);
+    assert!(php_status.extra_php[0].pid.is_some());
     assert!(extra_pid.exists());
     let conf = std::fs::read_to_string(env.paths.config(Tool::Apache, APACHE).join("httpd.conf")).unwrap();
     assert!(conf.contains("ServerName legacy.localhost"));
@@ -375,7 +378,8 @@ async fn projects_run_their_own_php_version(mut env: Env) {
     std::fs::write(&extra_pid, record).unwrap();
     let cli = Supervisor::new(env.paths.clone());
     let php_status = cli.status().await.into_iter().find(|s| s.tool == Tool::Php).unwrap();
-    assert_eq!(php_status.extra_versions, [PHP_OLD]);
+    let extra: Vec<(&str, u16)> = php_status.extra_php.iter().map(|e| (e.version.as_str(), e.port)).collect();
+    assert_eq!(extra, [(PHP_OLD, old_port)]);
     std::fs::write(&extra_pid, std::fs::read_to_string(&extra_pid).unwrap().replace("\n1\n", &format!("\n{}\n", std::process::id()))).unwrap();
 
     // Without the project, starting PHP again stops the version it no longer needs.
@@ -383,7 +387,7 @@ async fn projects_run_their_own_php_version(mut env: Env) {
     sup.start(Tool::Php, &env.state).await.unwrap();
     assert!(wait_until(|| ports::is_free(old_port)).await, "the unneeded version must stop");
     assert!(!extra_pid.exists());
-    assert!(sup.status().await.into_iter().find(|s| s.tool == Tool::Php).unwrap().extra_versions.is_empty());
+    assert!(sup.status().await.into_iter().find(|s| s.tool == Tool::Php).unwrap().extra_php.is_empty());
 
     // Stopping PHP stops every version.
     projects::save(&env.paths, &mut env.state, None, Project {

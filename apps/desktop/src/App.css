@@ -80,6 +80,15 @@ button.ghost:hover:not(:disabled) { color: var(--danger); }
 .state-label { margin-left: auto; font-size: 0.8rem; }
 .dot.failed { background: var(--danger); }
 .card .actions button { flex: 1; }
+.grid > .card { display: flex; flex-direction: column; }
+.grid > .card > .actions:last-child, .grid > .card > button:last-child { margin-top: auto; }
+.pools { margin: -4px 0 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+.pools-title { display: block; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin-bottom: 6px; }
+.pools ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.pools li { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; min-width: 0; }
+.pools .dot { width: 7px; height: 7px; flex: none; }
+.pool-version { font-weight: 600; font-variant-numeric: tabular-nums; }
+.pool-projects { margin-left: auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .error.small { font-size: 0.8rem; margin: 0 0 10px; }
 .error-box { white-space: pre-wrap; font-size: 0.8rem; color: var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 30%, transparent); border-radius: 8px; padding: 10px 12px; margin: 12px 0 0; max-height: 200px; overflow: auto; }
 

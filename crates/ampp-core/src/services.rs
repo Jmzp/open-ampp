@@ -39,7 +39,15 @@ pub struct ServiceStatus {
     /// Launched by another Open AMPP process (e.g. `ampp up` in a terminal).
     pub external: bool,
     /// PHP only: other versions running for projects, newest first.
-    pub extra_versions: Vec<String>,
+    pub extra_php: Vec<ExtraPhp>,
+}
+
+/// A PHP version running for projects besides the active one.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct ExtraPhp {
+    pub version: String,
+    pub port: u16,
+    pub pid: Option<u32>,
 }
 
 /// Contents of `run/<tool>.pid`: the service, who launched it, and with which version and port.
@@ -143,24 +151,24 @@ impl Supervisor {
         }
 
         // Extra PHP versions for projects, launched by us or by another process.
-        let mut extra_versions: Vec<String> = procs
+        let mut extra_php: Vec<ExtraPhp> = procs
             .iter()
             .filter(|(unit, _)| matches!(unit, Unit::Php(_)))
-            .map(|(_, r)| r.inst.version.clone())
+            .map(|(_, r)| ExtraPhp { version: r.inst.version.clone(), port: r.port, pid: r.child.id() })
             .chain(
                 self.extra_php_units()
                     .into_iter()
                     .filter(|unit| !procs.contains_key(unit))
                     .filter_map(|unit| self.external(&unit))
-                    .map(|rec| rec.id),
+                    .map(|rec| ExtraPhp { version: rec.id, port: rec.port, pid: Some(rec.pid) }),
             )
             .collect();
-        extra_versions.sort_by(|a, b| crate::catalog::compare_versions(b, a));
+        extra_php.sort_by(|a, b| crate::catalog::compare_versions(&b.version, &a.version));
 
         Tool::ALL
             .iter()
             .map(|&tool| {
-                let extra_versions = if tool == Tool::Php { extra_versions.clone() } else { Vec::new() };
+                let extra_php = if tool == Tool::Php { extra_php.clone() } else { Vec::new() };
                 match procs.get(&Unit::Service(tool)) {
                     Some(r) => ServiceStatus {
                         tool,
@@ -170,7 +178,7 @@ impl Supervisor {
                         port: Some(r.port),
                         error: None,
                         external: false,
-                        extra_versions,
+                        extra_php,
                     },
                     None => match self.external(&Unit::Service(tool)) {
                         Some(rec) => ServiceStatus {
@@ -181,7 +189,7 @@ impl Supervisor {
                             port: Some(rec.port),
                             error: None,
                             external: true,
-                            extra_versions,
+                            extra_php,
                         },
                         None => ServiceStatus {
                             tool,
@@ -191,7 +199,7 @@ impl Supervisor {
                             port: None,
                             error: errors.get(&tool).cloned(),
                             external: false,
-                            extra_versions,
+                            extra_php,
                         },
                     },
                 }

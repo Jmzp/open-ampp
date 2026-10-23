@@ -24,7 +24,9 @@ const es = {
     start: "Iniciar",
     stop: "Detener",
     restart: "Reiniciar",
-    alsoRunning: (versions: string) => `También ${versions} para tus proyectos`,
+    forProjects: "Para tus proyectos",
+    noProjects: "sin proyectos",
+    more: (n: number) => `+${n} más`,
   },
 
   projects: {
@@ -212,7 +214,9 @@ const en: Messages = {
     start: "Start",
     stop: "Stop",
     restart: "Restart",
-    alsoRunning: (versions) => `Also ${versions} for your projects`,
+    forProjects: "For your projects",
+    noProjects: "no projects",
+    more: (n) => `+${n} more`,
   },
 
   projects: {
