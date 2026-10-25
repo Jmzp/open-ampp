@@ -59,13 +59,23 @@ Open AMPP es una alternativa moderna a XAMPP / MAMP / LAMPP. Abres la app, elige
 
 ### Instaladores
 
-Descarga el instalador de tu sistema desde [Releases](https://github.com/Jmzp/open-ampp/releases):
+**Última versión: [v0.2.0](https://github.com/Jmzp/open-ampp/releases/tag/v0.2.0)**. Elige tu sistema y haz clic para descargar:
 
-| Sistema | Archivo |
+| Sistema | Descarga |
 |---|---|
-| macOS | `.dmg` (`aarch64` para Apple Silicon, `x64` para Intel) |
-| Windows | `.msi` o `-setup.exe` |
-| Linux | `.AppImage`, `.deb` o `.rpm` |
+| 🍎 **macOS** Apple Silicon (M1/M2/M3/M4) | [Open.AMPP_0.2.0_aarch64.dmg](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_aarch64.dmg) |
+| 🍎 **macOS** Intel | [Open.AMPP_0.2.0_x64.dmg](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_x64.dmg) |
+| 🪟 **Windows** x64 (instalador) | [Open.AMPP_0.2.0_x64-setup.exe](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_x64-setup.exe) · o [`.msi`](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_x64_en-US.msi) |
+| 🐧 **Linux** x64 · Ubuntu / Debian | [Open.AMPP_0.2.0_amd64.deb](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_amd64.deb) |
+| 🐧 **Linux** x64 · Fedora / RHEL | [Open.AMPP-0.2.0-1.x86_64.rpm](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP-0.2.0-1.x86_64.rpm) |
+| 🐧 **Linux** x64 · cualquier distro | [Open.AMPP_0.2.0_amd64.AppImage](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_amd64.AppImage) |
+| 🐧 **Linux** arm64 · Ubuntu / Debian | [Open.AMPP_0.2.0_arm64.deb](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_arm64.deb) |
+| 🐧 **Linux** arm64 · Fedora / RHEL | [Open.AMPP-0.2.0-1.aarch64.rpm](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP-0.2.0-1.aarch64.rpm) |
+| 🐧 **Linux** arm64 · cualquier distro | [Open.AMPP_0.2.0_aarch64.AppImage](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_aarch64.AppImage) |
+
+> ¿No sabes qué Mac tienes? Menú Apple → **Acerca de este Mac**: "Apple M…" es Apple Silicon, "Intel" es Intel.
+>
+> Los demás archivos de un release (`.sig`, `.app.tar.gz`, `latest.json`) los usa el actualizador automático; no los necesitas. Las versiones anteriores están en [Releases](https://github.com/Jmzp/open-ampp/releases).
 
 > Mientras los builds no estén firmados con un Developer ID de Apple, macOS pide confirmación la primera vez: clic derecho sobre la app → **Abrir**.
 
@@ -234,7 +244,7 @@ GH_TOKEN=$(gh auth token) python3 catalog/generate.py         # después, regene
 
 ## 🚢 Publicar versiones
 
-Al subir un tag `v*` corre el workflow **Release**: compila los instaladores de todas las plataformas (con el CLI `ampp` incluido), firma los artefactos de actualización y deja un borrador de release listo para publicar. Las actualizaciones se firman con la clave del secreto `TAURI_SIGNING_PRIVATE_KEY`; los secretos de firma y notarización de Apple son opcionales (ver [`release.yml`](.github/workflows/release.yml)).
+Al subir un tag `v*` corre el workflow **Release**: compila los instaladores de todas las plataformas (con el CLI `ampp` incluido), firma los artefactos de actualización y deja un borrador de release listo para publicar. Las actualizaciones se firman con la clave del secreto `TAURI_SIGNING_PRIVATE_KEY`; los secretos de firma y notarización de Apple son opcionales (ver [`release.yml`](.github/workflows/release.yml)). Al subir la versión, actualiza también los enlaces de descarga en [Instaladores](#instaladores), ya que los nombres de los archivos incluyen la versión.
 
 ## 🗺️ Hoja de ruta
 
