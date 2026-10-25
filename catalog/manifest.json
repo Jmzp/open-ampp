@@ -47,7 +47,7 @@
       "os": "windows",
       "arch": "x64",
       "url": "https://www.apachelounge.com/download/VS18/binaries/httpd-2.4.69-261002-Win64-VS18.zip",
-      "sha256": "9f1f93cab9a0c6dc5e628aa640784bb30347f93fcd01b46a4c0d6b5ba76bf4e2",
+      "sha256": "77d715d0d9cee731e2251e7ddc2090a7a8e6d41fedef2e9827cd918593c5a652",
       "archive": "zip",
       "size": null
     },
