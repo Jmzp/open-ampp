@@ -11,13 +11,15 @@ pub mod install;
 pub mod installer;
 pub mod paths;
 pub mod ports;
+pub mod projects;
 pub mod services;
 pub mod state;
+pub mod tls;
 pub mod tools;
 
 pub use catalog::{Manifest, Package, Platform};
 pub use error::{Error, Result};
 pub use paths::{AppPaths, Tool};
-pub use services::{ServiceStatus, Supervisor};
+pub use services::{ExtraPhp, ServiceStatus, Supervisor};
 pub use state::State;
 pub use tools::Extra;
