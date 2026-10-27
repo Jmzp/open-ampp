@@ -342,9 +342,15 @@ async fn stop_all(app: tauri::State<'_, AppState>) -> CommandResult<()> {
 }
 
 
+/// Logs the viewer can show, by name. Only these files can be read from the UI.
+const LOG_FILES: &[&str] = &["apache", "apache-access", "php", "mariadb", "mailpit"];
+
 #[tauri::command]
-fn read_log(app: tauri::State<AppState>, tool: Tool) -> String {
-    services::tail(&app.supervisor.log_file(tool), LOG_VIEW_BYTES)
+fn read_log(app: tauri::State<AppState>, name: String) -> CommandResult<String> {
+    if !LOG_FILES.contains(&name.as_str()) {
+        return Err(CommandError(tr!("log desconocido: {name}", "unknown log: {name}")));
+    }
+    Ok(services::tail(&app.paths.logs().join(format!("{name}.log")), LOG_VIEW_BYTES))
 }
 
 /// Directives the PHP tab lets users edit through a form.

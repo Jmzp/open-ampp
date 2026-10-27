@@ -134,6 +134,9 @@ export interface MailStatus {
   external: boolean;
 }
 
+/** Log files the viewer can show (`logs/<name>.log`). */
+export type LogName = "apache" | "apache-access" | "php" | "mariadb" | "mailpit";
+
 export const HOMEBREW = "homebrew";
 
 /** Display text for a version ("homebrew" → "Homebrew 2.4.62"). */
@@ -179,7 +182,7 @@ export const api = {
   restartService: (tool: Tool) => invoke<void>("restart_service", { tool }),
   startAll: () => invoke<string[]>("start_all"),
   stopAll: () => invoke<void>("stop_all"),
-  readLog: (tool: Tool) => invoke<string>("read_log", { tool }),
+  readLog: (name: LogName) => invoke<string>("read_log", { name }),
   getPhpConfig: () => invoke<PhpConfig>("get_php_config"),
   /** Returns `true` if PHP was restarted to apply the changes. */
   savePhpSettings: (settings: PhpSettings) => invoke<boolean>("save_php_settings", { settings }),

@@ -116,7 +116,15 @@ const es = {
     empty: (tool: string) => `Aún no hay versiones de ${tool} para tu sistema en el catálogo.`,
   },
 
-  logs: { follow: "Seguir el final", empty: "Sin registros todavía." },
+  logs: {
+    follow: "Seguir el final",
+    empty: "Sin registros todavía.",
+    access: "Accesos de Apache",
+    search: "Buscar en el log…",
+    matches: (n: number) => (n === 1 ? "1 línea" : `${n} líneas`),
+    noMatches: "Ninguna línea coincide.",
+    folder: "Carpeta de logs ↗",
+  },
 
   php: {
     installFirst: "Instala una versión de PHP para configurarla.",
@@ -323,7 +331,15 @@ const en: Messages = {
     empty: (tool) => `There are no ${tool} versions for your system in the catalog yet.`,
   },
 
-  logs: { follow: "Follow the end", empty: "No log entries yet." },
+  logs: {
+    follow: "Follow the end",
+    empty: "No log entries yet.",
+    access: "Apache access",
+    search: "Search the log…",
+    matches: (n) => (n === 1 ? "1 line" : `${n} lines`),
+    noMatches: "No line matches.",
+    folder: "Logs folder ↗",
+  },
 
   php: {
     installFirst: "Install a PHP version to configure it.",
