@@ -184,3 +184,22 @@ fn status_shows_mailpit_once_installed() {
     let out = ampp(tmp.path(), &["stop", "mailpit"]);
     assert!(out.status.success(), "{}", stderr(&out));
 }
+
+#[test]
+fn doctor_reports_each_check_with_a_hint() {
+    let (tmp, _paths) = home_with_two_phps();
+    let out = ampp(tmp.path(), &["doctor"]);
+    let text = stdout(&out);
+    assert!(text.contains("✓ Data folder"), "{text}");
+    assert!(text.contains("✓ PHP 8.4.1") || text.contains("PHP 8.4.1"), "{text}");
+    assert!(text.contains("! MariaDB: no version is installed\n    → ampp install mariadb"), "{text}");
+    assert!(text.contains("errors,") && text.contains("warnings"), "{text}");
+}
+
+#[test]
+fn open_rejects_an_unknown_project() {
+    let tmp = tempfile::tempdir().unwrap();
+    let out = ampp(tmp.path(), &["open", "nope"]);
+    assert!(!out.status.success());
+    assert!(stderr(&out).contains("ampp project ls"), "{}", stderr(&out));
+}

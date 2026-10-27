@@ -706,17 +706,24 @@ impl Supervisor {
     }
 }
 
+pub const VC_REDIST_URL: &str = "https://aka.ms/vs/17/release/vc_redist.x64.exe";
+
+/// Windows only: the Visual C++ runtime the official Apache and PHP builds need is not installed.
+pub fn vc_runtime_missing() -> bool {
+    if !cfg!(windows) {
+        return false;
+    }
+    let system = std::env::var_os("SystemRoot").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(r"C:\Windows"));
+    !system.join("System32").join("vcruntime140.dll").exists()
+}
+
 /// The official Windows builds of Apache and PHP need the Visual C++ runtime; without it they exit
 /// with a cryptic "DLL not found" error, so check for it up front.
 fn check_runtime(tool: Tool) -> Result<()> {
-    if !cfg!(windows) || tool == Tool::Mariadb {
+    if tool == Tool::Mariadb || !vc_runtime_missing() {
         return Ok(());
     }
-    let system = std::env::var_os("SystemRoot").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(r"C:\Windows"));
-    if system.join("System32").join("vcruntime140.dll").exists() {
-        return Ok(());
-    }
-    let url = "https://aka.ms/vs/17/release/vc_redist.x64.exe";
+    let url = VC_REDIST_URL;
     Err(Error::ServiceFailed {
         tool,
         reason: tr!(

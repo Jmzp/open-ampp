@@ -6,6 +6,7 @@ pub mod i18n;
 pub mod catalog;
 pub mod config;
 pub mod db;
+pub mod doctor;
 pub mod error;
 pub mod install;
 pub mod installer;

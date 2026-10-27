@@ -125,6 +125,8 @@ ampp project ls             # also: ampp project rm blog
 ampp project add shop ~/sites/shop --https            # https://shop.localhost:8443
 ampp trust                  # trust the local CA that signs the HTTPS projects
 ampp root-password s3cret   # MariaDB root password (no argument removes it)
+ampp doctor                 # check versions, ports, projects and catalog, with what to fix
+ampp open [project]         # open the site or a project in the browser
 ampp php -v                 # passthrough to the active PHP (same for composer and mariadb)
 ```
 

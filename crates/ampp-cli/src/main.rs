@@ -64,6 +64,10 @@ enum Cmd {
     },
     /// Print where Open AMPP keeps its data.
     Paths,
+    /// Check versions, ports, projects and the catalog, and say how to fix what is wrong.
+    Doctor,
+    /// Open the site (or a project) in the browser.
+    Open { project: Option<String> },
 }
 
 #[derive(Subcommand)]
@@ -225,6 +229,8 @@ async fn run(cli: Cli) -> Result<ExitCode> {
             }
         }
         Cmd::Paths => println!("{}", ctx.paths.root().display()),
+        Cmd::Doctor => return doctor(&ctx).await,
+        Cmd::Open { project } => open(&ctx, project)?,
     }
     Ok(ExitCode::SUCCESS)
 }
@@ -484,6 +490,70 @@ fn trust(ctx: &Ctx) -> Result<()> {
     }
     tls::trust(&ctx.paths)?;
     println!("{}", tr!("Listo: la CA local es de confianza. Reinicia el navegador.", "Done: the local CA is trusted. Restart your browser."));
+    Ok(())
+}
+
+async fn doctor(ctx: &Ctx) -> Result<ExitCode> {
+    use ampp_core::doctor::{self, Level};
+    let mut checks = doctor::run(&ctx.paths, &ctx.state, &Supervisor::new(ctx.paths.clone())).await;
+    let catalog = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        Manifest::fetch(ampp_core::catalog::CATALOG_URL),
+    )
+    .await;
+    checks.push(match catalog {
+        Ok(Ok(_)) => doctor::Check {
+            level: Level::Ok,
+            title: tr!("Catálogo publicado al día", "Published catalog reachable"),
+            hint: None,
+        },
+        _ => doctor::Check {
+            level: Level::Warn,
+            title: tr!("No se pudo descargar el catálogo publicado", "Could not download the published catalog"),
+            hint: Some(tr!(
+                "se usa el incluido en la app, que puede no tener los últimos parches",
+                "the bundled one is used, which may lack the latest patches"
+            )),
+        },
+    });
+    for c in &checks {
+        let mark = match c.level {
+            Level::Ok => "✓",
+            Level::Warn => "!",
+            Level::Error => "✗",
+        };
+        println!("{mark} {}", c.title);
+        if let Some(hint) = &c.hint {
+            println!("    → {hint}");
+        }
+    }
+    let errors = checks.iter().filter(|c| c.level == Level::Error).count();
+    let warnings = checks.iter().filter(|c| c.level == Level::Warn).count();
+    println!("\n{}", tr!("{errors} errores, {warnings} avisos", "{errors} errors, {warnings} warnings"));
+    Ok(if errors > 0 { ExitCode::FAILURE } else { ExitCode::SUCCESS })
+}
+
+fn open(ctx: &Ctx, project: Option<String>) -> Result<()> {
+    let url = match project {
+        None => format!("http://localhost:{}/", ctx.state.ports.http),
+        Some(name) => {
+            let p = ctx.state.projects.iter().find(|p| p.name == name).ok_or_else(|| {
+                tr!("no existe el proyecto {name} (mira ampp project ls)", "there is no project called {name} (see ampp project ls)")
+            })?;
+            projects::url(&ctx.state, p)
+        }
+    };
+    println!("{url}");
+    let status = if cfg!(target_os = "macos") {
+        std::process::Command::new("open").arg(&url).status()
+    } else if cfg!(windows) {
+        std::process::Command::new("cmd").args(["/C", "start", "", &url]).status()
+    } else {
+        std::process::Command::new("xdg-open").arg(&url).status()
+    };
+    if !status.is_ok_and(|s| s.success()) {
+        return Err(tr!("no se pudo abrir el navegador", "could not open the browser").into());
+    }
     Ok(())
 }
 
