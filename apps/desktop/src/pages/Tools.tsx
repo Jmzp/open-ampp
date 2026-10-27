@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { api, errorMessage, type AppState, type Extra, type ToolsInfo } from "../lib/api";
+import { api, errorMessage, type AppState, type Extra, type Ports, type ToolsInfo } from "../lib/api";
 import { t } from "../lib/i18n";
 
 const EXTRAS: Record<Extra, { title: string; description: string }> = {
@@ -11,12 +11,25 @@ const EXTRAS: Record<Extra, { title: string; description: string }> = {
 
 const IS_WINDOWS = navigator.userAgent.includes("Windows");
 
+/** Editable ports: key, label and an optional hint computed from the value. */
+const PORT_FIELDS: [keyof Ports, string, ((v: number) => string)?][] = [
+  ["http", t.tools.httpPort],
+  ["https", t.tools.httpsPort],
+  ["mariadb", t.tools.mariadbPort],
+  ["php_fcgi_base", t.tools.phpBase, (base) => t.tools.phpBaseHint(base)],
+  ["mail_smtp", t.tools.mailSmtpPort],
+  ["mail_web", t.tools.mailWebPort],
+];
+
+const portStrings = (p: Ports) =>
+  Object.fromEntries(Object.entries(p).map(([k, v]) => [k, String(v)])) as Record<keyof Ports, string>;
+
 export function Tools({ state, onChanged }: { state: AppState; onChanged: () => void }) {
   const [info, setInfo] = useState<ToolsInfo | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pathResult, setPathResult] = useState<string[] | null>(null);
-  const [ports, setPorts] = useState({ http: String(state.ports.http), mariadb: String(state.ports.mariadb) });
+  const [ports, setPorts] = useState(portStrings(state.ports));
   const [portsSaved, setPortsSaved] = useState(false);
 
   const load = () =>
@@ -46,7 +59,8 @@ export function Tools({ state, onChanged }: { state: AppState; onChanged: () => 
   if (!info) return error ? <p className="error">{error}</p> : <p className="muted">{t.loading}</p>;
 
   const pmaUrl = `http://localhost:${state.ports.http}/phpmyadmin/`;
-  const portsChanged = ports.http !== String(state.ports.http) || ports.mariadb !== String(state.ports.mariadb);
+  const saved = portStrings(state.ports);
+  const portsChanged = PORT_FIELDS.some(([key]) => ports[key] !== saved[key]);
 
   return (
     <div className="stack">
@@ -144,22 +158,17 @@ export function Tools({ state, onChanged }: { state: AppState; onChanged: () => 
       <section className="panel">
         <h3>{t.tools.ports}</h3>
         <div className="form-grid">
-          <label className="field">
-            <span>{t.tools.httpPort}</span>
-            <input
-              inputMode="numeric"
-              value={ports.http}
-              onChange={(e) => setPorts({ ...ports, http: e.target.value.replace(/\D/g, "") })}
-            />
-          </label>
-          <label className="field">
-            <span>{t.tools.mariadbPort}</span>
-            <input
-              inputMode="numeric"
-              value={ports.mariadb}
-              onChange={(e) => setPorts({ ...ports, mariadb: e.target.value.replace(/\D/g, "") })}
-            />
-          </label>
+          {PORT_FIELDS.map(([key, label, hint]) => (
+            <label key={key} className="field">
+              <span>{label}</span>
+              <input
+                inputMode="numeric"
+                value={ports[key]}
+                onChange={(e) => setPorts({ ...ports, [key]: e.target.value.replace(/\D/g, "") })}
+              />
+              {hint && <small className="muted">{hint(Number(ports[key]))}</small>}
+            </label>
+          ))}
         </div>
         <div className="save-row">
           <span className="muted small">{portsSaved ? t.tools.portsSaved : t.tools.portsHint}</span>
@@ -168,7 +177,8 @@ export function Tools({ state, onChanged }: { state: AppState; onChanged: () => 
             disabled={!portsChanged || busy !== null}
             onClick={() =>
               run("ports", async () => {
-                await api.setPorts(Number(ports.http), Number(ports.mariadb));
+                const next = Object.fromEntries(Object.entries(ports).map(([k, v]) => [k, Number(v)]));
+                await api.setPorts(next as unknown as Ports);
                 setPortsSaved(true);
               })
             }

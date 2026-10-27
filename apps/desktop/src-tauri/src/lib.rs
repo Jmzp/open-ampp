@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::{Mutex, RwLock};
 
 use ampp_core::install::{self, HOMEBREW};
-use ampp_core::state::{PhpSettings, Project};
+use ampp_core::state::{PhpSettings, Ports, Project};
 use ampp_core::{
     AppPaths, Extra, Manifest, Platform, ServiceStatus, State, Supervisor, Tool, config, installer, projects, services,
     tls, tools,
@@ -524,15 +524,12 @@ async fn stop_mail(app: tauri::State<'_, AppState>) -> CommandResult<()> {
     Ok(())
 }
 
-/// Changes the HTTP and MariaDB ports. Running services keep the old ones until restarted.
+/// Changes the ports. Running services keep the old ones until restarted.
 #[tauri::command]
-fn set_ports(app: tauri::State<AppState>, http: u16, mariadb: u16) -> CommandResult<()> {
-    if http == 0 || mariadb == 0 || http == mariadb {
-        return Err(CommandError(tr!("puertos inválidos", "invalid ports")));
-    }
+fn set_ports(app: tauri::State<AppState>, ports: Ports) -> CommandResult<()> {
+    ports.validate()?;
     app.update(|s| {
-        s.ports.http = http;
-        s.ports.mariadb = mariadb;
+        s.ports = ports;
         Ok(())
     })
 }
