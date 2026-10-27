@@ -168,3 +168,19 @@ fn https_projects_must_use_localhost() {
     assert!(!out.status.success());
     assert!(stderr(&out).contains(".localhost"), "{}", stderr(&out));
 }
+
+#[test]
+fn status_shows_mailpit_once_installed() {
+    let tmp = tempfile::tempdir().unwrap();
+    let out = ampp(tmp.path(), &["status"]);
+    assert!(!stdout(&out).contains("Mailpit"), "not installed, not listed");
+
+    let paths = AppPaths::new(tmp.path());
+    let exe = ampp_core::tools::file(&paths, ampp_core::Extra::Mailpit);
+    std::fs::create_dir_all(exe.parent().unwrap()).unwrap();
+    std::fs::write(&exe, "").unwrap();
+    let out = ampp(tmp.path(), &["status"]);
+    assert!(stdout(&out).contains("○ Mailpit  stopped"), "{}", stdout(&out));
+    let out = ampp(tmp.path(), &["stop", "mailpit"]);
+    assert!(out.status.success(), "{}", stderr(&out));
+}

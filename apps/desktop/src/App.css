@@ -153,6 +153,12 @@ select { font: inherit; color: var(--text); background: var(--bg); border: 1px s
 .check-field small { display: block; }
 .warn-badge { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
 
+/* Mailpit */
+.mail-strip { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.mail-strip .dot { flex: none; }
+.mail-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mail-main .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
 /* Update banner */
 .banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding: 10px 14px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); font-size: 0.9rem; }
 .save-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 12px; }

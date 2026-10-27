@@ -7,7 +7,8 @@ Usage: python3 catalog/generate.py
   first: GitHub reports each asset's SHA-256 in its `digest` field. They cover macOS and Linux.
 - Windows uses the official builds (php.net, mariadb.org, Apache Lounge) with the checksums
   those projects publish.
-- Helper tools (phpMyAdmin, Composer) also use their published checksums.
+- Helper tools (phpMyAdmin, Composer) also use their published checksums; Mailpit, which has
+  one build per platform, goes in `native_extras` with the digests GitHub reports.
 """
 
 import json
@@ -126,6 +127,31 @@ def composer():
     return {"name": "composer", "version": stable["version"], "url": url, "sha256": sha, "size": None}
 
 
+MAILPIT_ASSETS = {
+    "mailpit-darwin-arm64.tar.gz": ("macos", "arm64", "tar-gz"),
+    "mailpit-darwin-amd64.tar.gz": ("macos", "x64", "tar-gz"),
+    "mailpit-linux-arm64.tar.gz": ("linux", "arm64", "tar-gz"),
+    "mailpit-linux-amd64.tar.gz": ("linux", "x64", "tar-gz"),
+    "mailpit-windows-amd64.zip": ("windows", "x64", "zip"),
+}
+
+
+def mailpit():
+    """Latest Mailpit release, one entry per platform, with GitHub's SHA-256 digests."""
+    release = json.loads(get("https://api.github.com/repos/axllent/mailpit/releases/latest"))
+    version = release["tag_name"].removeprefix("v")
+    for asset in release["assets"]:
+        target = MAILPIT_ASSETS.get(asset["name"])
+        digest = asset.get("digest") or ""
+        if target and digest.startswith("sha256:"):
+            os_, arch, archive = target
+            yield {
+                "name": "mailpit", "version": version, "url": asset["browser_download_url"],
+                "sha256": digest.removeprefix("sha256:"), "archive": archive, "size": asset["size"],
+                "os": os_, "arch": arch,
+            }
+
+
 def minor(version):
     return ".".join(version.split(".")[:2])
 
@@ -148,9 +174,13 @@ def main():
     packages.sort(key=lambda p: (p["tool"], p["os"], p["arch"], vkey(p["version"])))
 
     extras = [e for e in (phpmyadmin(), composer()) if e]
+    # Builds up to 0.2.0 reject the whole catalog on an unknown name in `extras`, so
+    # per-platform tools live in a key of their own that they ignore.
+    native = sorted(mailpit(), key=lambda e: (e["name"], e["os"], e["arch"]))
 
-    MANIFEST.write_text(json.dumps({"schema": 1, "packages": packages, "extras": extras}, indent=2) + "\n")
-    print(f"wrote {len(packages)} packages and {len(extras)} tools to {MANIFEST}")
+    manifest = {"schema": 1, "packages": packages, "extras": extras, "native_extras": native}
+    MANIFEST.write_text(json.dumps(manifest, indent=2) + "\n")
+    print(f"wrote {len(packages)} packages and {len(extras) + len(native)} tools to {MANIFEST}")
 
 
 if __name__ == "__main__":

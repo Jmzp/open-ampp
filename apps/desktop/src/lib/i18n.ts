@@ -156,6 +156,8 @@ const es = {
   tools: {
     phpmyadmin: "Administra MariaDB desde el navegador en /phpmyadmin. Entra directo como root, como en XAMPP.",
     composer: "Gestor de dependencias de PHP. Usa siempre la versión de PHP activa y su php.ini.",
+    mailpit: "Atrapa los correos que envía PHP con mail() y los muestra en una bandeja web. Ningún correo sale de tu máquina.",
+    mailpitHint: "Se inicia con Iniciar todo",
     available: (v: string) => `v${v} disponible`,
     unavailable: "No disponible",
     open: "Abrir ↗",
@@ -184,6 +186,12 @@ const es = {
     logs: "Logs",
     data: "Datos de Open AMPP",
     trayHint: "Al cerrar la ventana, Open AMPP sigue en la bandeja del sistema con los servicios activos.",
+  },
+
+  mail: {
+    open: "Abrir bandeja ↗",
+    running: (smtp: number) => `Atrapando los correos de PHP · SMTP 127.0.0.1:${smtp}`,
+    stopped: "Detenido: los correos que envíe PHP fallarán hasta iniciarlo.",
   },
 
   update: {
@@ -350,6 +358,8 @@ const en: Messages = {
   tools: {
     phpmyadmin: "Manage MariaDB from the browser at /phpmyadmin. Logs straight in as root, like XAMPP.",
     composer: "PHP dependency manager. Always uses the active PHP version and its php.ini.",
+    mailpit: "Catches the mail PHP sends with mail() and shows it in a web inbox. No message ever leaves your machine.",
+    mailpitHint: "Starts with Start all",
     available: (v) => `v${v} available`,
     unavailable: "Not available",
     open: "Open ↗",
@@ -378,6 +388,12 @@ const en: Messages = {
     logs: "Logs",
     data: "Open AMPP data",
     trayHint: "Closing the window keeps Open AMPP in the system tray with the services running.",
+  },
+
+  mail: {
+    open: "Open inbox ↗",
+    running: (smtp) => `Catching PHP's mail · SMTP 127.0.0.1:${smtp}`,
+    stopped: "Stopped: mail sent by PHP fails until it starts.",
   },
 
   update: {

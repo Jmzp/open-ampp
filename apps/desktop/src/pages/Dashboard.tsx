@@ -6,6 +6,7 @@ import {
   TOOL_LABELS,
   versionLabel,
   type AppState,
+  type MailStatus,
   type ProjectInfo,
   type ServiceStatus,
   type Tool,
@@ -18,18 +19,21 @@ const TOOLS = Object.keys(TOOL_LABELS) as Tool[];
 
 export function Dashboard({ state, onManage }: { state: AppState; onManage: () => void }) {
   const [statuses, setStatuses] = useState<ServiceStatus[]>([]);
-  const [busy, setBusy] = useState<Set<Tool | "all">>(new Set());
+  const [busy, setBusy] = useState<Set<Tool | "all" | "mail">>(new Set());
   const [errors, setErrors] = useState<string[]>([]);
 
   const [projects, setProjects] = useState<ProjectInfo[]>([]);
+  const [mail, setMail] = useState<MailStatus | null>(null);
 
   const refresh = () =>
-    Promise.all([api.serviceStatus().then(setStatuses), api.getProjects().then((p) => setProjects(p.projects))]).catch(
-      () => {},
-    );
+    Promise.all([
+      api.serviceStatus().then(setStatuses),
+      api.getProjects().then((p) => setProjects(p.projects)),
+      api.mailStatus().then(setMail),
+    ]).catch(() => {});
   usePolling(refresh, 2000);
 
-  const run = async (key: Tool | "all", action: () => Promise<unknown>) => {
+  const run = async (key: Tool | "all" | "mail", action: () => Promise<unknown>) => {
     setBusy((s) => new Set(s).add(key));
     setErrors([]);
     try {
@@ -145,6 +149,38 @@ export function Dashboard({ state, onManage }: { state: AppState; onManage: () =
           );
         })}
       </section>
+
+      {mail?.installed && (
+        <section className="panel mail-strip">
+          <span className={`dot ${mail.running ? "running" : mail.error ? "failed" : "stopped"}`} />
+          <div className="mail-main">
+            <strong>Mailpit</strong>
+            <span className="muted small">
+              {mail.running
+                ? t.mail.running(state.ports.mail_smtp)
+                : mail.error
+                  ? mail.error.split("\n")[0]
+                  : t.mail.stopped}
+            </span>
+          </div>
+          <div className="actions">
+            {mail.running ? (
+              <>
+                <button onClick={() => openUrl(`http://localhost:${mail.web_port ?? state.ports.mail_web}/`)}>
+                  {t.mail.open}
+                </button>
+                <button className="secondary" disabled={busy.has("mail")} onClick={() => run("mail", api.stopMail)}>
+                  {t.dashboard.stop}
+                </button>
+              </>
+            ) : (
+              <button disabled={busy.has("mail") || busy.has("all")} onClick={() => run("mail", api.startMail)}>
+                {t.dashboard.start}
+              </button>
+            )}
+          </div>
+        </section>
+      )}
 
       <DatabasePanel state={state} running={!!status("mariadb")?.running} />
     </>

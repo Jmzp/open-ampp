@@ -1,4 +1,4 @@
-//! Helper tools (phpMyAdmin, Composer) and terminal shims (`php`, `composer`, `mariadb`…)
+//! Helper tools (phpMyAdmin, Composer, Mailpit) and terminal shims (`php`, `composer`, `mariadb`…)
 //! that always point at the active Open AMPP versions.
 
 use std::fs;
@@ -20,15 +20,18 @@ use crate::state::State;
 pub enum Extra {
     Phpmyadmin,
     Composer,
+    /// Catches the mail PHP sends and shows it in a web inbox.
+    Mailpit,
 }
 
 impl Extra {
-    pub const ALL: [Extra; 2] = [Extra::Phpmyadmin, Extra::Composer];
+    pub const ALL: [Extra; 3] = [Extra::Phpmyadmin, Extra::Composer, Extra::Mailpit];
 
     pub fn as_str(self) -> &'static str {
         match self {
             Extra::Phpmyadmin => "phpmyadmin",
             Extra::Composer => "composer",
+            Extra::Mailpit => "mailpit",
         }
     }
 
@@ -36,6 +39,7 @@ impl Extra {
         match self {
             Extra::Phpmyadmin => "phpMyAdmin",
             Extra::Composer => "Composer",
+            Extra::Mailpit => "Mailpit",
         }
     }
 }
@@ -49,6 +53,7 @@ pub fn file(paths: &AppPaths, extra: Extra) -> PathBuf {
     match extra {
         Extra::Phpmyadmin => dir(paths, extra).join("index.php"),
         Extra::Composer => dir(paths, extra).join("composer.phar"),
+        Extra::Mailpit => dir(paths, extra).join(exe("mailpit")),
     }
 }
 
@@ -303,7 +308,7 @@ mod tests {
         fs::write(file(&paths, Extra::Composer), "").unwrap();
         uninstall(&paths, Extra::Composer).unwrap();
         assert!(!dir(&paths, Extra::Composer).exists());
-        assert_eq!(Extra::ALL.map(Extra::label), ["phpMyAdmin", "Composer"]);
+        assert_eq!(Extra::ALL.map(Extra::label), ["phpMyAdmin", "Composer", "Mailpit"]);
     }
 
     #[test]

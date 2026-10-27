@@ -332,7 +332,7 @@ async fn start_all(app: tauri::State<'_, AppState>) -> CommandResult<Vec<String>
         )));
     }
     let failures = app.supervisor.start_all(&state).await;
-    Ok(failures.into_iter().map(|(_, e)| e.to_string()).collect())
+    Ok(failures.into_iter().map(|e| e.to_string()).collect())
 }
 
 #[tauri::command]
@@ -469,23 +469,58 @@ async fn install_extra(app: tauri::State<'_, AppState>, name: Extra) -> CommandR
         s.extras.insert(name, file.version.clone());
         Ok(())
     })?;
-    // Apache serves phpMyAdmin at /phpmyadmin, so its config must be regenerated.
-    if name == Extra::Phpmyadmin {
-        app.restart_if_running(Tool::Apache).await?;
+    match name {
+        // Apache serves phpMyAdmin at /phpmyadmin, so its config must be regenerated.
+        Extra::Phpmyadmin => {
+            app.restart_if_running(Tool::Apache).await?;
+        }
+        // PHP's php.ini now sends mail to it; start it if the stack is up.
+        Extra::Mailpit => {
+            if app.restart_if_running(Tool::Php).await? {
+                app.supervisor.start_mail(&app.snapshot()).await?;
+            }
+        }
+        Extra::Composer => {}
     }
     Ok(())
 }
 
 #[tauri::command]
 async fn uninstall_extra(app: tauri::State<'_, AppState>, name: Extra) -> CommandResult<()> {
+    // A running executable cannot be deleted on Windows.
+    if name == Extra::Mailpit {
+        app.supervisor.stop_mail().await;
+    }
     tools::uninstall(&app.paths, name)?;
     app.update(|s| {
         s.extras.remove(&name);
         Ok(())
     })?;
-    if name == Extra::Phpmyadmin {
-        app.restart_if_running(Tool::Apache).await?;
+    match name {
+        Extra::Phpmyadmin => {
+            app.restart_if_running(Tool::Apache).await?;
+        }
+        Extra::Mailpit => {
+            app.restart_if_running(Tool::Php).await?;
+        }
+        Extra::Composer => {}
     }
+    Ok(())
+}
+
+#[tauri::command]
+async fn mail_status(app: tauri::State<'_, AppState>) -> CommandResult<ampp_core::MailStatus> {
+    Ok(app.supervisor.mail_status().await)
+}
+
+#[tauri::command]
+async fn start_mail(app: tauri::State<'_, AppState>) -> CommandResult<()> {
+    Ok(app.supervisor.start_mail(&app.snapshot()).await?)
+}
+
+#[tauri::command]
+async fn stop_mail(app: tauri::State<'_, AppState>) -> CommandResult<()> {
+    app.supervisor.stop_mail().await;
     Ok(())
 }
 
@@ -756,6 +791,9 @@ pub fn run() {
             open_project_folder,
             get_tls,
             trust_ca,
+            mail_status,
+            start_mail,
+            stop_mail,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

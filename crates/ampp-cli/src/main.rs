@@ -21,7 +21,7 @@ enum Cmd {
     /// Start the services in the foreground; Ctrl+C stops them.
     Up,
     /// Stop one service (or all of them), even if the app started it.
-    Stop { tool: Option<ToolArg> },
+    Stop { service: Option<ServiceArg> },
     /// List installed and available versions.
     List,
     /// Move installed versions to their newest patch release (security fixes).
@@ -103,6 +103,15 @@ impl From<ToolArg> for Tool {
     }
 }
 
+/// Something `ampp stop` can stop: a service or Mailpit.
+#[derive(Clone, Copy, ValueEnum)]
+enum ServiceArg {
+    Apache,
+    Php,
+    Mariadb,
+    Mailpit,
+}
+
 #[derive(Clone, Copy, ValueEnum)]
 enum Target {
     Apache,
@@ -110,6 +119,7 @@ enum Target {
     Mariadb,
     Phpmyadmin,
     Composer,
+    Mailpit,
 }
 
 enum Resolved {
@@ -125,6 +135,7 @@ impl Target {
             Target::Mariadb => Resolved::Tool(Tool::Mariadb),
             Target::Phpmyadmin => Resolved::Extra(Extra::Phpmyadmin),
             Target::Composer => Resolved::Extra(Extra::Composer),
+            Target::Mailpit => Resolved::Extra(Extra::Mailpit),
         }
     }
 }
@@ -169,10 +180,13 @@ async fn run(cli: Cli) -> Result<ExitCode> {
     match cli.command {
         Cmd::Status => status(&ctx, &Supervisor::new(ctx.paths.clone())).await,
         Cmd::Up => return up(&ctx).await,
-        Cmd::Stop { tool } => {
+        Cmd::Stop { service } => {
             let sup = Supervisor::new(ctx.paths.clone());
-            match tool {
-                Some(t) => sup.stop(t.into()).await?,
+            match service {
+                Some(ServiceArg::Apache) => sup.stop(Tool::Apache).await?,
+                Some(ServiceArg::Php) => sup.stop(Tool::Php).await?,
+                Some(ServiceArg::Mariadb) => sup.stop(Tool::Mariadb).await?,
+                Some(ServiceArg::Mailpit) => sup.stop_mail().await,
                 None => sup.stop_all().await,
             }
             status(&ctx, &sup).await;
@@ -227,14 +241,21 @@ async fn status(ctx: &Ctx, sup: &Supervisor) {
             println!("○ {name:<8} {}", tr!("detenido ({active})", "stopped ({active})"));
         }
     }
+    let mail = sup.mail_status().await;
+    if mail.running {
+        let port = mail.web_port.unwrap_or(ctx.state.ports.mail_web);
+        println!("● {:<8} {} http://localhost:{port}, PID {}", "Mailpit", mail.version.unwrap_or_default(), mail.pid.unwrap_or(0));
+    } else if mail.installed {
+        println!("○ {:<8} {}", "Mailpit", tr!("detenido", "stopped"));
+    }
 }
 
 async fn up(ctx: &Ctx) -> Result<ExitCode> {
     let sup = Supervisor::new(ctx.paths.clone());
     sup.cleanup_orphans().await;
     let failures = sup.start_all(&ctx.state).await;
-    for (tool, e) in &failures {
-        eprintln!("✗ {}: {e}", tool.label());
+    for e in &failures {
+        eprintln!("✗ {e}");
     }
     status(ctx, &sup).await;
     let running = sup.status().await.iter().any(|s| s.running && !s.external);

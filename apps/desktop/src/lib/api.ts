@@ -14,6 +14,8 @@ export interface Ports {
   https: number;
   mariadb: number;
   php_fcgi_base: number;
+  mail_smtp: number;
+  mail_web: number;
 }
 
 export interface Project {
@@ -39,7 +41,7 @@ export interface ProjectsInfo {
   active_series: string | null;
 }
 
-export type Extra = "phpmyadmin" | "composer";
+export type Extra = "phpmyadmin" | "composer" | "mailpit";
 
 export interface PhpSettings {
   directives: Record<string, string>;
@@ -122,6 +124,16 @@ export interface ServiceStatus {
   extra_php: { version: string; port: number; pid: number | null }[];
 }
 
+export interface MailStatus {
+  installed: boolean;
+  running: boolean;
+  pid: number | null;
+  version: string | null;
+  web_port: number | null;
+  error: string | null;
+  external: boolean;
+}
+
 export const HOMEBREW = "homebrew";
 
 /** Display text for a version ("homebrew" → "Homebrew 2.4.62"). */
@@ -186,6 +198,9 @@ export const api = {
   removeProject: (name: string) => invoke<boolean>("remove_project", { name }),
   openProjectFolder: (name: string) => invoke<void>("open_project_folder", { name }),
   getTls: () => invoke<TlsInfo>("get_tls"),
+  mailStatus: () => invoke<MailStatus>("mail_status"),
+  startMail: () => invoke<void>("start_mail"),
+  stopMail: () => invoke<void>("stop_mail"),
   /** Adds the local CA to the user's trust store; the system asks for confirmation. */
   trustCa: () => invoke<void>("trust_ca"),
   onInstallProgress: (cb: (p: InstallProgress) => void): Promise<UnlistenFn> =>

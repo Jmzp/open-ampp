@@ -6,6 +6,7 @@ import { t } from "../lib/i18n";
 const EXTRAS: Record<Extra, { title: string; description: string }> = {
   phpmyadmin: { title: "phpMyAdmin", description: t.tools.phpmyadmin },
   composer: { title: "Composer", description: t.tools.composer },
+  mailpit: { title: "Mailpit", description: t.tools.mailpit },
 };
 
 const IS_WINDOWS = navigator.userAgent.includes("Windows");
@@ -77,6 +78,11 @@ export function Tools({ state, onChanged }: { state: AppState; onChanged: () => 
                     </button>
                   )}
                   {e.name === "composer" && <code className="cmd">composer install</code>}
+                  {e.name === "mailpit" && (
+                    <button onClick={() => openUrl(`http://localhost:${state.ports.mail_web}/`)} title={t.tools.mailpitHint}>
+                      {t.mail.open}
+                    </button>
+                  )}
                   <button
                     className="secondary"
                     disabled={busy !== null}

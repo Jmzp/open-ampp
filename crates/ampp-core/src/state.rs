@@ -71,11 +71,14 @@ pub struct Ports {
     pub mariadb: u16,
     /// Base for PHP FastCGI: each version uses `php_fcgi_base + major*10 + minor`.
     pub php_fcgi_base: u16,
+    /// Mailpit: SMTP server PHP sends to, and its web inbox.
+    pub mail_smtp: u16,
+    pub mail_web: u16,
 }
 
 impl Default for Ports {
     fn default() -> Self {
-        Self { http: 8080, https: 8443, mariadb: 3306, php_fcgi_base: 9000 }
+        Self { http: 8080, https: 8443, mariadb: 3306, php_fcgi_base: 9000, mail_smtp: 1025, mail_web: 8025 }
     }
 }
 
@@ -217,6 +220,7 @@ mod tests {
         let state = State::load(&path).unwrap();
         assert_eq!(state.ports.http, 80);
         assert_eq!(state.ports.mariadb, 3306);
+        assert_eq!((state.ports.mail_smtp, state.ports.mail_web), (1025, 8025));
     }
 
     #[test]

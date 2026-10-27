@@ -29,6 +29,7 @@ Open AMPP es una alternativa moderna a XAMPP / MAMP / LAMPP. Abres la app, elige
 - 🌐 **Proyectos**: sirve cualquier carpeta en su propio dominio `*.localhost`, cada una con su versión de PHP y HTTPS opcional, sin editar el archivo hosts.
 - 🐘 **PHP al estilo XAMPP**: el `php.ini` por defecto es el de XAMPP, con sus extensiones (`mysqli`, `pdo_mysql`, `mbstring`, `curl`, `openssl`…) más `intl`, `gd`, `zip`, `sodium` y `opcache`.
 - 🗄️ **phpMyAdmin y Composer** a un clic, ya conectados a las versiones activas.
+- 📬 **Mailpit**: los correos que envían tus proyectos con `mail()` llegan a una bandeja web local en vez de fallar o llegarle a gente real.
 - 📦 **Nada que instalar en el sistema**: la app descarga sus propios binarios portables, verificados con SHA-256, dentro de su carpeta de datos. No toca Homebrew, `apt` ni el registro de Windows.
 - 🖥️ **Interfaz clara** en español e inglés (sigue el idioma de tu sistema): estado de los servicios en vivo, iniciar/detener, logs, gestor de versiones, editor de `php.ini` e icono en la bandeja.
 - ⌨️ **Comando `ampp`** para la terminal, además de los atajos `php`, `composer` y `mariadb` que usan siempre las versiones activas.
@@ -95,7 +96,7 @@ npm run tauri dev
 1. **Versiones** → instala una versión de PHP, Apache y MariaDB.
 2. **Panel** → **Iniciar todo**.
 3. Abre **http://localhost:8080**: verás la página de bienvenida servida por PHP.
-4. Opcional: **Herramientas** → instala **phpMyAdmin** (en `/phpmyadmin`) y **Composer**.
+4. Opcional: **Herramientas** → instala **phpMyAdmin** (en `/phpmyadmin`), **Composer** y **Mailpit** (bandeja en http://localhost:8025).
 
 Tus archivos van en la carpeta `www/` dentro del directorio de datos (la app tiene un botón para abrirla). MariaDB escucha en `127.0.0.1:3306` con usuario `root` sin contraseña; desde PHP en macOS/Linux también funciona `localhost` por el socket, igual que en XAMPP.
 
@@ -114,9 +115,9 @@ Al cerrar la ventana, Open AMPP sigue en la bandeja del sistema con los servicio
 ```sh
 ampp status                 # estado de los servicios (también los que inició la app)
 ampp up                     # inicia todo en primer plano; Ctrl+C lo detiene
-ampp stop [apache|php|mariadb]
+ampp stop [apache|php|mariadb|mailpit]
 ampp list                   # versiones instaladas y disponibles
-ampp install php            # el PHP más reciente; también: ampp install mariadb 11.4.13, ampp install phpmyadmin
+ampp install php            # el PHP más reciente; también: ampp install mariadb 11.4.13, ampp install phpmyadmin, ampp install mailpit
 ampp upgrade                # lleva las versiones instaladas a su último parche
 ampp use php 8.3.36         # versión activa
 ampp project add blog ~/sites/blog/public --php 8.2   # http://blog.localhost:8080
@@ -146,6 +147,14 @@ Marca **Servir también por HTTPS** en un proyecto y también se sirve en `https
 - En Linux la app muestra los comandos con `sudo` para agregarla al almacén del sistema y al de NSS que usan Chrome y Firefox.
 - Firefox puede usar su propio almacén: si sigue avisando, importa `certs/local/ca.pem` en **Ajustes → Privacidad y seguridad → Certificados**.
 - `mod_ssl` solo se carga cuando algún proyecto usa HTTPS, así que el HTTP normal nunca depende de él.
+
+## 📬 Correo (Mailpit)
+
+Instala **Mailpit** en **Herramientas** y cada correo que PHP envíe con `mail()` (o con el transporte `sendmail` de un framework) se atrapa y se muestra en **http://localhost:8025**. Nada sale de tu máquina.
+
+- Se inicia y se detiene con los demás servicios (**Iniciar todo**, `ampp up`) y tiene su propia fila en el panel.
+- PHP queda conectado solo: `sendmail_path` en macOS y Linux, `SMTP`/`smtp_port` en Windows. Los frameworks que usan SMTP pueden apuntar a `127.0.0.1:1025` sin usuario ni contraseña (en Laravel: `MAIL_MAILER=smtp`, `MAIL_HOST=127.0.0.1`, `MAIL_PORT=1025`).
+- Los correos se guardan en `data/mailpit/` entre reinicios.
 
 ## 🐘 Configuración de PHP
 
@@ -184,7 +193,7 @@ Con la variable `OPEN_AMPP_HOME` puedes usar otra carpeta (instalaciones portabl
 bin/<herramienta>/<versión>/    binarios descargados
 config/<herramienta>/<versión>/ httpd.conf, php.ini, php-fpm.conf, my.cnf generados
 data/mariadb/<mayor.menor>/     datos de MariaDB (uno por versión, para no mezclar formatos)
-tools/                          phpMyAdmin y Composer
+tools/                          phpMyAdmin, Composer y Mailpit
 shims/                          php, composer, mariadb, ampp… para la terminal
 certs/local/                    CA local y el certificado HTTPS de los proyectos
 www/                            tu DocumentRoot
@@ -271,4 +280,4 @@ Quienes participan siguen el [Código de conducta](CODE_OF_CONDUCT.md).
 
 ## 📄 Licencia
 
-[MIT](LICENSE) © Jorge Zapata y los contribuidores de Open AMPP. Apache, PHP, MariaDB, phpMyAdmin y Composer se distribuyen bajo sus propias licencias.
+[MIT](LICENSE) © Jorge Zapata y los contribuidores de Open AMPP. Apache, PHP, MariaDB, phpMyAdmin, Composer y Mailpit se distribuyen bajo sus propias licencias.

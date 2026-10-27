@@ -43,6 +43,7 @@ fn main() {
         ("errors_without_active_or_installed_version", |e| Box::pin(errors_without_active_or_installed_version(e))),
         ("cleanup_removes_stale_pid_files", |e| Box::pin(cleanup_removes_stale_pid_files(e))),
         ("projects_run_their_own_php_version", |e| Box::pin(projects_run_their_own_php_version(e))),
+        ("mailpit_runs_with_the_services_when_installed", |e| Box::pin(mailpit_runs_with_the_services_when_installed(e))),
     ];
     let filter = std::env::args().skip(1).find(|a| !a.starts_with('-'));
     let mut failed = 0;
@@ -82,7 +83,7 @@ fn port_from_args() -> Option<u16> {
     for (i, arg) in args.iter().enumerate() {
         let next = args.get(i + 1);
         let file = match arg.as_str() {
-            "-b" => return next?.rsplit(':').next()?.parse().ok(),
+            "-b" | "--listen" => return next?.rsplit(':').next()?.parse().ok(),
             "-f" | "-y" => next.cloned(),
             a => a.strip_prefix("--defaults-file=").map(String::from),
         };
@@ -175,7 +176,7 @@ fn kill(pid: u32) {
 async fn starts_reports_and_stops_all_services(env: Env) {
     let sup = Supervisor::new(env.paths.clone());
     let failures = sup.start_all(&env.state).await;
-    assert!(failures.is_empty(), "{:?}", failures.iter().map(|(t, e)| format!("{t:?}: {e}")).collect::<Vec<_>>());
+    assert!(failures.is_empty(), "{:?}", failures.iter().map(|e| e.to_string()).collect::<Vec<_>>());
 
     let status = sup.status().await;
     for (tool, version, port) in [
@@ -309,8 +310,9 @@ async fn errors_without_active_or_installed_version(mut env: Env) {
 
     // start_all skips tools without an active version and reports the rest.
     let failures = sup.start_all(&env.state).await;
-    let tools: Vec<Tool> = failures.iter().map(|(t, _)| *t).collect();
-    assert_eq!(tools, [Tool::Mariadb, Tool::Apache]);
+    assert_eq!(failures.len(), 2, "{failures:?}");
+    assert!(matches!(failures[0], ampp_core::Error::NotInstalled { tool: Tool::Mariadb, .. }));
+    assert!(matches!(failures[1], ampp_core::Error::NoActiveVersion(Tool::Php)), "Apache needs the active PHP");
 }
 
 async fn cleanup_removes_stale_pid_files(env: Env) {
@@ -360,7 +362,7 @@ async fn projects_run_their_own_php_version(mut env: Env) {
 
     let sup = Supervisor::new(env.paths.clone());
     let failures = sup.start_all(&env.state).await;
-    assert!(failures.is_empty(), "{:?}", failures.iter().map(|(t, e)| format!("{t:?}: {e}")).collect::<Vec<_>>());
+    assert!(failures.is_empty(), "{:?}", failures.iter().map(|e| e.to_string()).collect::<Vec<_>>());
     assert!(ports::is_open(env.php_port()).await && ports::is_open(old_port).await, "both PHP versions must run");
     let status = sup.status().await;
     let php_status = status.iter().find(|s| s.tool == Tool::Php).unwrap();
@@ -409,4 +411,42 @@ async fn projects_run_their_own_php_version(mut env: Env) {
     Supervisor::new(env.paths.clone()).cleanup_orphans().await;
     assert!(!extra_pid.exists());
     sup.stop_all().await;
+}
+
+async fn mailpit_runs_with_the_services_when_installed(mut env: Env) {
+    use ampp_core::tools::{self, Extra};
+    env.state.ports.mail_smtp = free_port();
+    env.state.ports.mail_web = free_port();
+    let web = env.state.ports.mail_web;
+    let sup = Supervisor::new(env.paths.clone());
+
+    // Not installed: start_all leaves it out and its status says so.
+    assert!(sup.start_all(&env.state).await.is_empty());
+    let mail = sup.mail_status().await;
+    assert!(!mail.installed && !mail.running && mail.error.is_none(), "{mail:?}");
+    sup.stop_all().await;
+
+    fake_binary(&tools::file(&env.paths, Extra::Mailpit));
+    env.state.extras.insert(Extra::Mailpit, "1.32.0".into());
+    assert!(sup.start_all(&env.state).await.is_empty());
+    let mail = sup.mail_status().await;
+    assert!(mail.installed && mail.running && !mail.external, "{mail:?}");
+    assert_eq!((mail.version.as_deref(), mail.web_port), (Some("1.32.0"), Some(web)));
+    assert!(ports::is_open(web).await);
+    assert!(env.paths.run().join("mailpit.pid").exists());
+    assert!(env.paths.root().join("data/mailpit").is_dir(), "messages are kept between restarts");
+
+    // A busy SMTP port is reported instead of failing silently.
+    sup.stop_mail().await;
+    assert!(wait_until(|| ports::is_free(web)).await);
+    let _busy = TcpListener::bind(("127.0.0.1", env.state.ports.mail_smtp)).unwrap();
+    let err = sup.start_mail(&env.state).await.unwrap_err();
+    assert!(matches!(err, ampp_core::Error::ToolFailed { .. }) && err.to_string().contains("Mailpit"), "{err}");
+    assert!(sup.mail_status().await.error.is_some());
+    drop(_busy);
+
+    sup.start_mail(&env.state).await.unwrap();
+    sup.stop_all().await;
+    assert!(wait_until(|| ports::is_free(web)).await, "stop_all stops Mailpit too");
+    assert!(!env.paths.run().join("mailpit.pid").exists());
 }
