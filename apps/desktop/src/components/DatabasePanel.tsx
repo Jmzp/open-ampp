@@ -11,6 +11,9 @@ export function DatabasePanel({ state, running }: { state: AppState; running: bo
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [showSystem, setShowSystem] = useState(false);
+  const [newPassword, setNewPassword] = useState<string | null>(null);
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = () => api.mariadbInfo().then(setInfo).catch((e) => setError(errorMessage(e)));
   usePolling(load, 5000, [running]);
@@ -35,7 +38,23 @@ export function DatabasePanel({ state, running }: { state: AppState; running: bo
     }
   };
 
-  const env = `DB_CONNECTION=mariadb\nDB_HOST=${c.host}\nDB_PORT=${c.port}\nDB_DATABASE=${name.trim() || "my_app"}\nDB_USERNAME=${c.user}\nDB_PASSWORD=`;
+  const savePassword = async (password: string) => {
+    setError(null);
+    setNotice(null);
+    setSavingPassword(true);
+    try {
+      await api.setMariadbPassword(password);
+      setNewPassword(null);
+      setNotice(password ? t.database.passwordSaved : t.database.passwordRemoved);
+      await load();
+    } catch (e) {
+      setError(errorMessage(e));
+    } finally {
+      setSavingPassword(false);
+    }
+  };
+
+  const env = `DB_CONNECTION=mariadb\nDB_HOST=${c.host}\nDB_PORT=${c.port}\nDB_DATABASE=${name.trim() || "my_app"}\nDB_USERNAME=${c.user}\nDB_PASSWORD=${c.password}`;
   const pma = state.extras.phpmyadmin
     ? (db: string) => `http://localhost:${state.ports.http}/phpmyadmin/index.php?route=/database/structure&db=${encodeURIComponent(db)}`
     : null;
@@ -43,7 +62,7 @@ export function DatabasePanel({ state, running }: { state: AppState; running: bo
     ["host", t.database.host, c.host],
     ["port", t.database.port, String(c.port)],
     ["user", t.database.user, c.user],
-    ["password", t.database.password, ""],
+    ["password", t.database.password, c.password],
     ...(c.socket ? ([["socket", t.database.socket, c.socket]] as [string, string, string][]) : []),
   ];
   const visible = info.databases?.filter((d) => showSystem || !d.system) ?? [];
@@ -58,16 +77,51 @@ export function DatabasePanel({ state, running }: { state: AppState; running: bo
               <div key={id} className="cred">
                 <dt>{label}</dt>
                 <dd>
-                  <code>{value || t.database.empty}</code>
+                  <code>{id === "password" && value ? "•".repeat(Math.min(value.length, 12)) : value || t.database.empty}</code>
                   {value && (
                     <button className="ghost copy" onClick={() => copy(id, value)}>
                       {copied === id ? t.database.copied : t.database.copy}
+                    </button>
+                  )}
+                  {id === "password" && newPassword === null && (
+                    <button
+                      className="ghost copy"
+                      disabled={!running}
+                      title={running ? undefined : t.database.passwordNeedsServer}
+                      onClick={() => setNewPassword("")}
+                    >
+                      {t.database.change}
                     </button>
                   )}
                 </dd>
               </div>
             ))}
           </dl>
+          {newPassword !== null && (
+            <form
+              className="db-create password-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                savePassword(newPassword);
+              }}
+            >
+              <input
+                type="password"
+                autoFocus
+                value={newPassword}
+                placeholder={t.database.newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+              <button className="inline" disabled={savingPassword}>
+                {newPassword ? t.database.setPassword : t.database.removePassword}
+              </button>
+              <button type="button" className="ghost" onClick={() => setNewPassword(null)}>
+                {t.database.cancel}
+              </button>
+            </form>
+          )}
+          {newPassword !== null && <p className="muted small">{t.database.passwordHint(info.series)}</p>}
+          {notice && <p className="ok-text small">{notice}</p>}
           <details className="small">
             <summary className="muted">{t.database.example}</summary>
             <pre className="snippet">{env}</pre>

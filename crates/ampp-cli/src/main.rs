@@ -37,6 +37,8 @@ enum Cmd {
     Project(ProjectCmd),
     /// Trust the local CA that signs the HTTPS projects (the system asks for confirmation).
     Trust,
+    /// Set the MariaDB root password of the active series (omit it to remove it). MariaDB must run.
+    RootPassword { password: Option<String> },
     /// Run the active PHP with the Open AMPP php.ini.
     #[command(disable_help_flag = true)]
     Php {
@@ -203,6 +205,7 @@ async fn run(cli: Cli) -> Result<ExitCode> {
         }
         Cmd::Project(cmd) => project(&mut ctx, cmd)?,
         Cmd::Trust => trust(&ctx)?,
+        Cmd::RootPassword { password } => root_password(&mut ctx, password.unwrap_or_default()).await?,
         Cmd::Php { args } => return passthrough(&ctx, "php", args),
         Cmd::Composer { args } => return passthrough(&ctx, "composer", args),
         Cmd::Mariadb { args } => return passthrough(&ctx, "mariadb", args),
@@ -452,6 +455,24 @@ fn project(ctx: &mut Ctx, cmd: ProjectCmd) -> Result<()> {
     }
     ctx.save()?;
     println!("{}", tr!("Listo. Reinicia Apache y PHP para aplicarlo (ampp stop y ampp up).", "Done. Restart Apache and PHP to apply it (ampp stop, then ampp up)."));
+    Ok(())
+}
+
+async fn root_password(ctx: &mut Ctx, password: String) -> Result<()> {
+    ampp_core::db::set_root_password(&ctx.paths, &ctx.state, &password).await?;
+    let id = ctx.state.active.get(&Tool::Mariadb).cloned().unwrap_or_default();
+    let series = ampp_core::install::locate(&ctx.paths, Tool::Mariadb, &id)?.minor_version();
+    match password.is_empty() {
+        true => ctx.state.mariadb_root_passwords.remove(&series),
+        false => ctx.state.mariadb_root_passwords.insert(series.clone(), password.clone()),
+    };
+    ampp_core::db::client_options(&ctx.paths, &ctx.state)?;
+    ctx.save()?;
+    if password.is_empty() {
+        println!("{}", tr!("root de MariaDB {series} ya no tiene contraseña.", "MariaDB {series} root no longer has a password."));
+    } else {
+        println!("{}", tr!("Contraseña de root de MariaDB {series} cambiada. Reinicia Apache para phpMyAdmin.", "MariaDB {series} root password changed. Restart Apache for phpMyAdmin."));
+    }
     Ok(())
 }
 

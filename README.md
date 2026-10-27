@@ -98,7 +98,7 @@ npm run tauri dev
 3. Open **http://localhost:8080**: the welcome page is served by PHP.
 4. Optional: **Tools** → install **phpMyAdmin** (at `/phpmyadmin`), **Composer** and **Mailpit** (inbox at http://localhost:8025).
 
-Your files go in the `www/` folder inside the data directory (the app has a button to open it). MariaDB listens on `127.0.0.1:3306` with user `root` and no password; with PHP on macOS/Linux, `localhost` also works through the socket, just like XAMPP.
+Your files go in the `www/` folder inside the data directory (the app has a button to open it). MariaDB listens on `127.0.0.1:3306` with user `root` and no password (you can set one on the dashboard or with `ampp root-password`; each MariaDB series keeps its own, since each has its own data); with PHP on macOS/Linux, `localhost` also works through the socket, just like XAMPP.
 
 Closing the window keeps Open AMPP in the system tray with the services running; **Quit** in the tray menu stops them.
 
@@ -124,6 +124,7 @@ ampp project add blog ~/sites/blog/public --php 8.2   # http://blog.localhost:80
 ampp project ls             # also: ampp project rm blog
 ampp project add shop ~/sites/shop --https            # https://shop.localhost:8443
 ampp trust                  # trust the local CA that signs the HTTPS projects
+ampp root-password s3cret   # MariaDB root password (no argument removes it)
 ampp php -v                 # passthrough to the active PHP (same for composer and mariadb)
 ```
 

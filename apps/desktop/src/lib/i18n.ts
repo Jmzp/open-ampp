@@ -98,6 +98,16 @@ const es = {
     create: "Crear",
     openPma: "Abrir en phpMyAdmin ↗",
     showSystem: "Mostrar las del sistema",
+    change: "Cambiar",
+    newPassword: "Nueva contraseña (vacía para quitarla)",
+    setPassword: "Guardar",
+    removePassword: "Quitar contraseña",
+    cancel: "Cancelar",
+    passwordHint: (series: string | null) =>
+      `Cambia root en MariaDB ${series ?? ""}: cada versión guarda sus datos aparte. phpMyAdmin, la terminal y Open AMPP la usan solos.`,
+    passwordNeedsServer: "Inicia MariaDB para cambiarla",
+    passwordSaved: "Contraseña guardada. phpMyAdmin ya la usa.",
+    passwordRemoved: "root ya no tiene contraseña.",
   },
 
   versions: {
@@ -318,6 +328,16 @@ const en: Messages = {
     create: "Create",
     openPma: "Open in phpMyAdmin ↗",
     showSystem: "Show system ones",
+    change: "Change",
+    newPassword: "New password (empty to remove it)",
+    setPassword: "Save",
+    removePassword: "Remove password",
+    cancel: "Cancel",
+    passwordHint: (series) =>
+      `Changes root in MariaDB ${series ?? ""}: each version keeps its data apart. phpMyAdmin, the terminal and Open AMPP use it on their own.`,
+    passwordNeedsServer: "Start MariaDB to change it",
+    passwordSaved: "Password saved. phpMyAdmin already uses it.",
+    passwordRemoved: "root no longer has a password.",
   },
 
   versions: {

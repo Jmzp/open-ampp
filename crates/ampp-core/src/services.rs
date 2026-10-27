@@ -460,7 +460,7 @@ impl Supervisor {
             return;
         };
         let graceful = match (unit, &running.inst) {
-            (Unit::Service(Tool::Mariadb), Some(inst)) => mariadb_shutdown_command(inst, running.port),
+            (Unit::Service(Tool::Mariadb), Some(inst)) => mariadb_shutdown_command(&self.paths, inst, running.port),
             _ => None,
         };
         terminate(&mut running.child, graceful).await;
@@ -536,7 +536,7 @@ impl Supervisor {
             let graceful = matches!(unit, Unit::Service(Tool::Mariadb))
                 .then(|| install::locate(&self.paths, Tool::Mariadb, &rec.id).ok())
                 .flatten()
-                .and_then(|inst| mariadb_shutdown_command(&inst, rec.port));
+                .and_then(|inst| mariadb_shutdown_command(&self.paths, &inst, rec.port));
             match graceful {
                 Some(mut cmd) => {
                     let _ = cmd.status().await;
@@ -627,7 +627,7 @@ impl Supervisor {
             Tool::Apache => {
                 let program = inst.httpd().ok_or_else(|| missing("httpd"))?;
                 let docroot = config::ensure_docroot(&self.paths)?;
-                let extra = tools::phpmyadmin_apache_conf(&self.paths, state.ports.mariadb)?;
+                let extra = tools::phpmyadmin_apache_conf(&self.paths, state)?;
                 let php_port = php_port(state)?;
                 let sites = projects::sites(&self.paths, state, php_port)?;
                 if let Some(tls) = &sites.tls {
@@ -757,9 +757,10 @@ fn spawn(launch: &Launch, log_path: &Path) -> Result<Child> {
     cmd.spawn().at(&launch.program)
 }
 
-fn mariadb_shutdown_command(inst: &Installation, port: u16) -> Option<Command> {
+fn mariadb_shutdown_command(paths: &AppPaths, inst: &Installation, port: u16) -> Option<Command> {
     let admin = inst.mariadb_admin()?;
     let mut cmd = Command::new(admin);
+    cmd.args(crate::db::defaults_arg(&crate::db::client_options_path(paths)));
     cmd.args(["--protocol=tcp", "-h", "127.0.0.1", "-P", &port.to_string(), "-u", "root", "shutdown"])
         .stdin(Stdio::null())
         .stdout(Stdio::null())

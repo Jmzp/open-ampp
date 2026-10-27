@@ -572,6 +572,8 @@ fn open_location(handle: AppHandle, what: String) -> CommandResult<()> {
 #[derive(Serialize)]
 struct MariadbInfo {
     connection: ampp_core::db::Connection,
+    /// Series of the active version (`11.4`): the root password belongs to its data folder.
+    series: Option<String>,
     /// `None` while MariaDB is not running.
     databases: Option<Vec<ampp_core::db::Database>>,
 }
@@ -583,7 +585,35 @@ async fn mariadb_info(app: tauri::State<'_, AppState>) -> CommandResult<MariadbI
     let connection = ampp_core::db::connection(&app.paths, &state);
     let running = app.supervisor.status().await.iter().any(|s| s.tool == Tool::Mariadb && s.running);
     let databases = if running { Some(ampp_core::db::list(&app.paths, &state).await?) } else { None };
-    Ok(MariadbInfo { connection, databases })
+    let series = state
+        .active
+        .get(&Tool::Mariadb)
+        .and_then(|id| install::locate(&app.paths, Tool::Mariadb, id).ok())
+        .map(|inst| inst.minor_version());
+    Ok(MariadbInfo { connection, series, databases })
+}
+
+/// Sets (or, when empty, removes) the root password of the active MariaDB series. The server must
+/// be running; phpMyAdmin picks it up when Apache restarts.
+#[tauri::command]
+async fn set_mariadb_password(app: tauri::State<'_, AppState>, password: String) -> CommandResult<()> {
+    let state = app.snapshot();
+    let running = app.supervisor.status().await.iter().any(|s| s.tool == Tool::Mariadb && s.running);
+    if !running {
+        return Err(CommandError(tr!("inicia MariaDB para cambiar la contraseña", "start MariaDB to change the password")));
+    }
+    ampp_core::db::set_root_password(&app.paths, &state, &password).await?;
+    let id = state.active.get(&Tool::Mariadb).cloned().unwrap_or_default();
+    let series = install::locate(&app.paths, Tool::Mariadb, &id)?.minor_version();
+    app.update(|s| {
+        match password.is_empty() {
+            true => s.mariadb_root_passwords.remove(&series),
+            false => s.mariadb_root_passwords.insert(series, password),
+        };
+        ampp_core::db::client_options(&app.paths, s).map(drop)
+    })?;
+    app.restart_if_running(Tool::Apache).await?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -843,6 +873,7 @@ pub fn run() {
             stop_mail,
             get_startup,
             set_startup,
+            set_mariadb_password,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

@@ -180,3 +180,4 @@ button.copy { width: auto; padding: 2px 8px; font-size: 0.75rem; font-weight: 50
 .db-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; margin-right: auto; }
 .db-create { display: flex; gap: 8px; }
 .db-create input { flex: 1; }
+.password-form { margin: 4px 0 6px; }

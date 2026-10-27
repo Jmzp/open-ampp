@@ -26,6 +26,9 @@ pub struct State {
     pub extras: BTreeMap<Extra, String>,
     /// Start every service when the desktop app opens.
     pub start_services_on_open: bool,
+    /// MariaDB root password per series (`11.4`), since each series has its own data folder.
+    /// Missing means no password, as after a fresh install.
+    pub mariadb_root_passwords: BTreeMap<String, String>,
 }
 
 /// Skips tools this build does not know (e.g. ones removed in an update) instead of failing to load.
@@ -151,6 +154,7 @@ impl Default for State {
             php: PhpSettings::default(),
             extras: BTreeMap::new(),
             start_services_on_open: false,
+            mariadb_root_passwords: BTreeMap::new(),
         }
     }
 }

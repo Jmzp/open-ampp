@@ -94,6 +94,8 @@ export type Location = "www" | "data" | "logs" | "php_ini" | "certs";
 
 export interface MariadbInfo {
   connection: { host: string; port: number; user: string; password: string; socket: string | null };
+  /** Series of the active MariaDB ("11.4"): the root password belongs to its data folder. */
+  series: string | null;
   /** `null` while MariaDB is not running. */
   databases: { name: string; tables: number; size: number; system: boolean }[] | null;
 }
@@ -195,6 +197,8 @@ export const api = {
   setPorts: (ports: Ports) => invoke<void>("set_ports", { ports }),
   mariadbInfo: () => invoke<MariadbInfo>("mariadb_info"),
   createDatabase: (name: string) => invoke<void>("create_database", { name }),
+  /** Sets the root password of the active MariaDB series; empty removes it. */
+  setMariadbPassword: (password: string) => invoke<void>("set_mariadb_password", { password }),
   getProjects: () => invoke<ProjectsInfo>("get_projects"),
   /** Adds a project or replaces `previous`. Returns `true` if Apache was restarted to apply it. */
   saveProject: (previous: string | null, project: Project) => invoke<boolean>("save_project", { previous, project }),
