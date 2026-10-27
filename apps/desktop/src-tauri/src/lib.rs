@@ -13,6 +13,7 @@ use ampp_core::{
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
 use ampp_core::tr;
+use tauri_plugin_autostart::ManagerExt as _;
 use tauri_plugin_opener::OpenerExt;
 
 /// Trailing log bytes shown in the log viewer.
@@ -699,6 +700,35 @@ fn open_project_folder(handle: AppHandle, name: String) -> CommandResult<()> {
     handle.opener().open_path(project.docroot.display().to_string(), None::<&str>).map_err(|e| CommandError(e.to_string()))
 }
 
+/// Argument the login item passes, so the app opens straight into the tray.
+const HIDDEN_ARG: &str = "--hidden";
+
+#[derive(Serialize)]
+struct Startup {
+    /// Open AMPP opens (in the tray) when the user signs in.
+    open_at_login: bool,
+    start_services: bool,
+}
+
+#[tauri::command]
+fn get_startup(handle: AppHandle) -> Startup {
+    Startup {
+        open_at_login: handle.autolaunch().is_enabled().unwrap_or(false),
+        start_services: handle.state::<AppState>().snapshot().start_services_on_open,
+    }
+}
+
+#[tauri::command]
+fn set_startup(handle: AppHandle, open_at_login: bool, start_services: bool) -> CommandResult<()> {
+    let autolaunch = handle.autolaunch();
+    let result = if open_at_login { autolaunch.enable() } else { autolaunch.disable() };
+    result.map_err(|e| CommandError(e.to_string()))?;
+    handle.state::<AppState>().update(|s| {
+        s.start_services_on_open = start_services;
+        Ok(())
+    })
+}
+
 /// Language for Rust-side messages, so the UI can match it.
 #[tauri::command]
 fn get_lang() -> ampp_core::i18n::Lang {
@@ -721,12 +751,14 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::Builder::new().args([HIDDEN_ARG]).build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let paths = AppPaths::from_system()?;
             paths.ensure()?;
             let mut state = State::load(&paths.state_file())?;
+            let start_services = state.start_services_on_open;
             sync_homebrew(&mut state);
             state.save(&paths.state_file())?;
             let _ = tools::write_shims(&paths, &state, cli_path().as_deref());
@@ -743,6 +775,18 @@ pub fn run() {
                 installing: Mutex::new(HashMap::new()),
             });
             tray::create(app.handle())?;
+
+            // The window starts hidden (tauri.conf.json): the login item keeps it in the tray.
+            if !std::env::args().any(|a| a == HIDDEN_ARG) {
+                tray::show_main_window(app.handle());
+            }
+            if start_services {
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let app = handle.state::<AppState>();
+                    app.supervisor.start_all(&app.snapshot()).await;
+                });
+            }
 
             // Swap in the published catalog (security releases, new versions) once it arrives.
             let handle = app.handle().clone();
@@ -797,6 +841,8 @@ pub fn run() {
             mail_status,
             start_mail,
             stop_mail,
+            get_startup,
+            set_startup,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

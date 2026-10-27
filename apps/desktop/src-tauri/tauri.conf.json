@@ -17,7 +17,8 @@
         "height": 720,
         "label": "main",
         "minWidth": 820,
-        "minHeight": 560
+        "minHeight": 560,
+        "visible": false
       }
     ],
     "security": {
@@ -40,7 +41,7 @@
     "homepage": "https://github.com/Jmzp/open-ampp",
     "license": "MIT",
     "publisher": "Open AMPP",
-    "copyright": "© Open AMPP",
+    "copyright": "\u00a9 Open AMPP",
     "windows": {
       "nsis": {
         "installerIcon": "icons/icon.ico",

@@ -153,6 +153,7 @@ select { font: inherit; color: var(--text); background: var(--bg); border: 1px s
 .project .actions { flex-wrap: wrap; justify-content: flex-end; }
 .check-field { display: flex; align-items: flex-start; gap: 8px; font-size: 0.9rem; }
 .check-field small { display: block; }
+.startup { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
 .warn-badge { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
 
 /* Mailpit */

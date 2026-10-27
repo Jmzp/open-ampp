@@ -21,9 +21,11 @@ pub struct State {
     pub projects: Vec<Project>,
     /// User PHP settings, shared by every version.
     pub php: PhpSettings,
-    /// Installed helper tools (phpMyAdmin, Composer) and their version.
+    /// Installed helper tools (phpMyAdmin, Composer, Mailpit) and their version.
     #[serde(deserialize_with = "known_extras")]
     pub extras: BTreeMap<Extra, String>,
+    /// Start every service when the desktop app opens.
+    pub start_services_on_open: bool,
 }
 
 /// Skips tools this build does not know (e.g. ones removed in an update) instead of failing to load.
@@ -148,6 +150,7 @@ impl Default for State {
             projects: Vec::new(),
             php: PhpSettings::default(),
             extras: BTreeMap::new(),
+            start_services_on_open: false,
         }
     }
 }

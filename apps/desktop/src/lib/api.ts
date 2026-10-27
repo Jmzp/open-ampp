@@ -57,6 +57,7 @@ export interface AppState {
   projects: Project[];
   php: PhpSettings;
   extras: Partial<Record<Extra, string>>;
+  start_services_on_open: boolean;
 }
 
 export interface PhpConfig {
@@ -202,6 +203,9 @@ export const api = {
   openProjectFolder: (name: string) => invoke<void>("open_project_folder", { name }),
   getTls: () => invoke<TlsInfo>("get_tls"),
   mailStatus: () => invoke<MailStatus>("mail_status"),
+  getStartup: () => invoke<{ open_at_login: boolean; start_services: boolean }>("get_startup"),
+  setStartup: (openAtLogin: boolean, startServices: boolean) =>
+    invoke<void>("set_startup", { openAtLogin, startServices }),
   startMail: () => invoke<void>("start_mail"),
   stopMail: () => invoke<void>("stop_mail"),
   /** Adds the local CA to the user's trust store; the system asks for confirmation. */

@@ -31,6 +31,7 @@ export function Tools({ state, onChanged }: { state: AppState; onChanged: () => 
   const [pathResult, setPathResult] = useState<string[] | null>(null);
   const [ports, setPorts] = useState(portStrings(state.ports));
   const [portsSaved, setPortsSaved] = useState(false);
+  const [startup, setStartup] = useState<{ open_at_login: boolean; start_services: boolean } | null>(null);
 
   const load = () =>
     api
@@ -40,7 +41,14 @@ export function Tools({ state, onChanged }: { state: AppState; onChanged: () => 
 
   useEffect(() => {
     load();
+    api.getStartup().then(setStartup).catch(() => {});
   }, []);
+
+  const saveStartup = (next: { open_at_login: boolean; start_services: boolean }) =>
+    run("startup", async () => {
+      await api.setStartup(next.open_at_login, next.start_services);
+      setStartup(next);
+    });
 
   const run = async (key: string, action: () => Promise<unknown>) => {
     setBusy(key);
@@ -187,6 +195,38 @@ export function Tools({ state, onChanged }: { state: AppState; onChanged: () => 
           </button>
         </div>
       </section>
+
+      {startup && (
+        <section className="panel">
+          <h3>{t.tools.startup}</h3>
+          <div className="startup">
+            <label className="check-field">
+              <input
+                type="checkbox"
+                checked={startup.open_at_login}
+                disabled={busy !== null}
+                onChange={(e) => saveStartup({ ...startup, open_at_login: e.target.checked })}
+              />
+              <span>
+                {t.tools.openAtLogin}
+                <small className="muted">{t.tools.openAtLoginHint}</small>
+              </span>
+            </label>
+            <label className="check-field">
+              <input
+                type="checkbox"
+                checked={startup.start_services}
+                disabled={busy !== null}
+                onChange={(e) => saveStartup({ ...startup, start_services: e.target.checked })}
+              />
+              <span>
+                {t.tools.startServices}
+                <small className="muted">{t.tools.startServicesHint}</small>
+              </span>
+            </label>
+          </div>
+        </section>
+      )}
 
       <section className="panel">
         <h3>{t.tools.folders}</h3>
