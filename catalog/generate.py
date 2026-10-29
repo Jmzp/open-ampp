@@ -57,8 +57,17 @@ def pkg(tool, version, os, arch, url, sha256, archive, size=None):
 
 def php_windows():
     base = "https://downloads.php.net/~windows/releases/"
-    rows = re.findall(r"([0-9a-f]{64}) \*(php-([\d.]+)-nts-Win32-vs1[67]-x64\.zip)", get(base + "sha256sum.txt"))
-    by_version = {v: (sha, name) for sha, name, v in rows}
+    # Rebuilds of a release carry a build number (php-8.4.27-1-nts-...) and replace the
+    # original zip, which then 404s; the highest build of each version wins.
+    rows = re.findall(r"([0-9a-f]{64}) \*(php-([\d.]+)(?:-(\d+))?-nts-Win32-vs1[67]-x64\.zip)",
+                      get(base + "sha256sum.txt"))
+    by_version, build = {}, {}
+    for sha, name, v, b in rows:
+        if v not in build or int(b or 0) > build[v]:
+            by_version[v], build[v] = (sha, name), int(b or 0)
+    if not by_version:
+        # Fail loudly instead of publishing a catalog without PHP for Windows.
+        raise SystemExit("php.net sha256sum.txt: no Windows x64 NTS builds matched")
     for v in latest_per_minor(by_version, PHP_MINORS):
         sha, name = by_version[v]
         yield pkg("php", v, "windows", "x64", base + name, sha, "zip")
