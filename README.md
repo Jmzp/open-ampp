@@ -59,19 +59,19 @@ Open AMPP is a modern take on XAMPP / MAMP / LAMPP. Open the app, pick the versi
 
 ### Installers
 
-**Latest version: [v0.2.0](https://github.com/Jmzp/open-ampp/releases/tag/v0.2.0)**. Pick your system and click to download:
+**Latest version: [v0.2.1](https://github.com/Jmzp/open-ampp/releases/tag/v0.2.1)**. Pick your system and click to download:
 
 | System | Download |
 |---|---|
-| 🍎 **macOS** Apple Silicon (M1/M2/M3/M4) | [Open.AMPP_0.2.0_aarch64.dmg](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_aarch64.dmg) |
-| 🍎 **macOS** Intel | [Open.AMPP_0.2.0_x64.dmg](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_x64.dmg) |
-| 🪟 **Windows** x64 (installer) | [Open.AMPP_0.2.0_x64-setup.exe](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_x64-setup.exe) · or [`.msi`](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_x64_en-US.msi) |
-| 🐧 **Linux** x64 · Ubuntu / Debian | [Open.AMPP_0.2.0_amd64.deb](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_amd64.deb) |
-| 🐧 **Linux** x64 · Fedora / RHEL | [Open.AMPP-0.2.0-1.x86_64.rpm](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP-0.2.0-1.x86_64.rpm) |
-| 🐧 **Linux** x64 · any distro | [Open.AMPP_0.2.0_amd64.AppImage](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_amd64.AppImage) |
-| 🐧 **Linux** arm64 · Ubuntu / Debian | [Open.AMPP_0.2.0_arm64.deb](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_arm64.deb) |
-| 🐧 **Linux** arm64 · Fedora / RHEL | [Open.AMPP-0.2.0-1.aarch64.rpm](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP-0.2.0-1.aarch64.rpm) |
-| 🐧 **Linux** arm64 · any distro | [Open.AMPP_0.2.0_aarch64.AppImage](https://github.com/Jmzp/open-ampp/releases/download/v0.2.0/Open.AMPP_0.2.0_aarch64.AppImage) |
+| 🍎 **macOS** Apple Silicon (M1/M2/M3/M4) | [Open.AMPP_0.2.1_aarch64.dmg](https://github.com/Jmzp/open-ampp/releases/download/v0.2.1/Open.AMPP_0.2.1_aarch64.dmg) |
+| 🍎 **macOS** Intel | [Open.AMPP_0.2.1_x64.dmg](https://github.com/Jmzp/open-ampp/releases/download/v0.2.1/Open.AMPP_0.2.1_x64.dmg) |
+| 🪟 **Windows** x64 (installer) | [Open.AMPP_0.2.1_x64-setup.exe](https://github.com/Jmzp/open-ampp/releases/download/v0.2.1/Open.AMPP_0.2.1_x64-setup.exe) · or [`.msi`](https://github.com/Jmzp/open-ampp/releases/download/v0.2.1/Open.AMPP_0.2.1_x64_en-US.msi) |
+| 🐧 **Linux** x64 · Ubuntu / Debian | [Open.AMPP_0.2.1_amd64.deb](https://github.com/Jmzp/open-ampp/releases/download/v0.2.1/Open.AMPP_0.2.1_amd64.deb) |
+| 🐧 **Linux** x64 · Fedora / RHEL | [Open.AMPP-0.2.1-1.x86_64.rpm](https://github.com/Jmzp/open-ampp/releases/download/v0.2.1/Open.AMPP-0.2.1-1.x86_64.rpm) |
+| 🐧 **Linux** x64 · any distro | [Open.AMPP_0.2.1_amd64.AppImage](https://github.com/Jmzp/open-ampp/releases/download/v0.2.1/Open.AMPP_0.2.1_amd64.AppImage) |
+| 🐧 **Linux** arm64 · Ubuntu / Debian | [Open.AMPP_0.2.1_arm64.deb](https://github.com/Jmzp/open-ampp/releases/download/v0.2.1/Open.AMPP_0.2.1_arm64.deb) |
+| 🐧 **Linux** arm64 · Fedora / RHEL | [Open.AMPP-0.2.1-1.aarch64.rpm](https://github.com/Jmzp/open-ampp/releases/download/v0.2.1/Open.AMPP-0.2.1-1.aarch64.rpm) |
+| 🐧 **Linux** arm64 · any distro | [Open.AMPP_0.2.1_aarch64.AppImage](https://github.com/Jmzp/open-ampp/releases/download/v0.2.1/Open.AMPP_0.2.1_aarch64.AppImage) |
 
 > Not sure which Mac you have? Apple menu → **About This Mac**: "Apple M…" means Apple Silicon, "Intel" means Intel.
 >
