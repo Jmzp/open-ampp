@@ -34,7 +34,7 @@ dependencies = [
 
 [[package]]
 name = "ampp-cli"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ampp-core",
  "clap",
@@ -44,7 +44,7 @@ dependencies = [
 
 [[package]]
 name = "ampp-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "directories",
  "flate2",
@@ -2859,7 +2859,7 @@ dependencies = [
 
 [[package]]
 name = "open-ampp"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "ampp-core",
  "serde",
