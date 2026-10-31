@@ -16,6 +16,8 @@ pub enum Error {
     NoActiveVersion(Tool),
     PortInUse { tool: Tool, port: u16 },
     ServiceFailed { tool: Tool, reason: String },
+    /// A helper tool that runs as a process (Mailpit).
+    ToolFailed { name: String, reason: String },
     InvalidSetting(String),
     InvalidProject(String),
     Tls(String),
@@ -67,6 +69,9 @@ impl std::fmt::Display for Error {
             ),
             Error::ServiceFailed { tool, reason } => {
                 tr!("{tool} no pudo iniciarse: {reason}", "{tool} could not start: {reason}")
+            }
+            Error::ToolFailed { name, reason } => {
+                tr!("{name} no pudo iniciarse: {reason}", "{name} could not start: {reason}")
             }
             Error::InvalidSetting(what) => tr!("ajuste inválido: {what}", "invalid setting: {what}"),
             Error::InvalidProject(why) => tr!("proyecto inválido: {why}", "invalid project: {why}"),
@@ -130,6 +135,7 @@ mod tests {
             (Error::NoActiveVersion(Tool::Apache), vec!["Apache"]),
             (Error::PortInUse { tool: Tool::Apache, port: 8080 }, vec!["Apache", "8080"]),
             (Error::ServiceFailed { tool: Tool::Php, reason: "boom".into() }, vec!["PHP", "boom"]),
+            (Error::ToolFailed { name: "Mailpit".into(), reason: "boom".into() }, vec!["Mailpit", "boom"]),
             (Error::InvalidSetting("memory_limit".into()), vec!["memory_limit"]),
             (Error::InvalidProject("blog".into()), vec!["blog"]),
             (Error::Tls("bad key".into()), vec!["HTTPS", "bad key"]),

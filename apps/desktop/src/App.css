@@ -94,7 +94,9 @@ button.ghost:hover:not(:disabled) { color: var(--danger); }
 
 /* Logs */
 .check { display: flex; gap: 6px; align-items: center; margin-left: auto; font-size: 0.85rem; }
-.log-view { margin: 16px 0; height: 460px; overflow: auto; background: #0d1117; color: #c9d1d9; border-radius: 10px; padding: 14px; font-size: 0.78rem; line-height: 1.45; white-space: pre-wrap; word-break: break-all; }
+.log-search { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.log-search input { flex: 1; min-width: 0; }
+.log-view { margin: 12px 0 16px; height: 460px; overflow: auto; background: #0d1117; color: #c9d1d9; border-radius: 10px; padding: 14px; font-size: 0.78rem; line-height: 1.45; white-space: pre-wrap; word-break: break-all; }
 
 /* Brand */
 .brand { display: flex; align-items: center; gap: 12px; }
@@ -151,7 +153,14 @@ select { font: inherit; color: var(--text); background: var(--bg); border: 1px s
 .project .actions { flex-wrap: wrap; justify-content: flex-end; }
 .check-field { display: flex; align-items: flex-start; gap: 8px; font-size: 0.9rem; }
 .check-field small { display: block; }
+.startup { display: flex; flex-direction: column; gap: 12px; margin-top: 8px; }
 .warn-badge { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+
+/* Mailpit */
+.mail-strip { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+.mail-strip .dot { flex: none; }
+.mail-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.mail-main .small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Update banner */
 .banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; padding: 10px 14px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); font-size: 0.9rem; }
@@ -171,3 +180,4 @@ button.copy { width: auto; padding: 2px 8px; font-size: 0.75rem; font-weight: 50
 .db-name { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-weight: 600; margin-right: auto; }
 .db-create { display: flex; gap: 8px; }
 .db-create input { flex: 1; }
+.password-form { margin: 4px 0 6px; }

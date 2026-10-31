@@ -21,9 +21,14 @@ pub struct State {
     pub projects: Vec<Project>,
     /// User PHP settings, shared by every version.
     pub php: PhpSettings,
-    /// Installed helper tools (phpMyAdmin, Composer) and their version.
+    /// Installed helper tools (phpMyAdmin, Composer, Mailpit) and their version.
     #[serde(deserialize_with = "known_extras")]
     pub extras: BTreeMap<Extra, String>,
+    /// Start every service when the desktop app opens.
+    pub start_services_on_open: bool,
+    /// MariaDB root password per series (`11.4`), since each series has its own data folder.
+    /// Missing means no password, as after a fresh install.
+    pub mariadb_root_passwords: BTreeMap<String, String>,
 }
 
 /// Skips tools this build does not know (e.g. ones removed in an update) instead of failing to load.
@@ -71,11 +76,58 @@ pub struct Ports {
     pub mariadb: u16,
     /// Base for PHP FastCGI: each version uses `php_fcgi_base + major*10 + minor`.
     pub php_fcgi_base: u16,
+    /// Mailpit: SMTP server PHP sends to, and its web inbox.
+    pub mail_smtp: u16,
+    pub mail_web: u16,
 }
 
 impl Default for Ports {
     fn default() -> Self {
-        Self { http: 8080, https: 8443, mariadb: 3306, php_fcgi_base: 9000 }
+        Self { http: 8080, https: 8443, mariadb: 3306, php_fcgi_base: 9000, mail_smtp: 1025, mail_web: 8025 }
+    }
+}
+
+impl Ports {
+    /// FastCGI ports PHP may use: `base + major*10 + minor` for PHP 7.0 to 9.9.
+    pub fn php_range(&self) -> std::ops::RangeInclusive<u32> {
+        let base = u32::from(self.php_fcgi_base);
+        base + 70..=base + 99
+    }
+
+    /// Rejects ports that would clash: zero, repeated, or inside PHP's FastCGI range.
+    pub fn validate(&self) -> Result<()> {
+        let fixed = [
+            ("HTTP", self.http),
+            ("HTTPS", self.https),
+            ("MariaDB", self.mariadb),
+            ("Mailpit SMTP", self.mail_smtp),
+            ("Mailpit web", self.mail_web),
+        ];
+        let invalid = |why: String| Err(Error::InvalidSetting(why));
+        if *self.php_range().end() > u32::from(u16::MAX) {
+            let base = self.php_fcgi_base;
+            return invalid(tr!(
+                "la base de PHP {base} es demasiado alta (máximo {})",
+                "the PHP base {base} is too high (at most {})",
+                u16::MAX - 99
+            ));
+        }
+        for (i, (name, port)) in fixed.iter().enumerate() {
+            if *port == 0 {
+                return invalid(tr!("el puerto de {name} no puede ser 0", "the {name} port cannot be 0"));
+            }
+            if let Some((other, _)) = fixed[..i].iter().find(|(_, p)| p == port) {
+                return invalid(tr!("{name} y {other} usan el mismo puerto {port}", "{name} and {other} use the same port {port}"));
+            }
+            if self.php_range().contains(&u32::from(*port)) {
+                let (start, end) = (*self.php_range().start(), *self.php_range().end());
+                return invalid(tr!(
+                    "el puerto {port} de {name} cae en el rango de PHP ({start}–{end})",
+                    "port {port} for {name} falls in PHP's range ({start}–{end})"
+                ));
+            }
+        }
+        Ok(())
     }
 }
 
@@ -101,6 +153,8 @@ impl Default for State {
             projects: Vec::new(),
             php: PhpSettings::default(),
             extras: BTreeMap::new(),
+            start_services_on_open: false,
+            mariadb_root_passwords: BTreeMap::new(),
         }
     }
 }
@@ -217,6 +271,7 @@ mod tests {
         let state = State::load(&path).unwrap();
         assert_eq!(state.ports.http, 80);
         assert_eq!(state.ports.mariadb, 3306);
+        assert_eq!((state.ports.mail_smtp, state.ports.mail_web), (1025, 8025));
     }
 
     #[test]
@@ -227,6 +282,22 @@ mod tests {
         let state = State::load(&path).unwrap();
         assert_eq!(state.extras.len(), 1);
         assert_eq!(state.extras[&Extra::Composer], "2.8.0");
+    }
+
+    #[test]
+    fn ports_reject_clashes() {
+        assert!(Ports::default().validate().is_ok());
+        let bad = [
+            Ports { http: 0, ..Ports::default() },
+            Ports { https: 8080, ..Ports::default() },
+            Ports { mail_web: 9084, ..Ports::default() },
+            Ports { php_fcgi_base: 8000, ..Ports::default() }, // 8070–8099 holds 8080
+            Ports { php_fcgi_base: 65500, ..Ports::default() },
+        ];
+        for ports in bad {
+            assert!(matches!(ports.validate(), Err(Error::InvalidSetting(_))), "{ports:?}");
+        }
+        assert!(Ports { php_fcgi_base: 19000, ..Ports::default() }.validate().is_ok());
     }
 
     #[test]

@@ -21,7 +21,7 @@ enum Cmd {
     /// Start the services in the foreground; Ctrl+C stops them.
     Up,
     /// Stop one service (or all of them), even if the app started it.
-    Stop { tool: Option<ToolArg> },
+    Stop { service: Option<ServiceArg> },
     /// List installed and available versions.
     List,
     /// Move installed versions to their newest patch release (security fixes).
@@ -37,6 +37,8 @@ enum Cmd {
     Project(ProjectCmd),
     /// Trust the local CA that signs the HTTPS projects (the system asks for confirmation).
     Trust,
+    /// Set the MariaDB root password of the active series (omit it to remove it). MariaDB must run.
+    RootPassword { password: Option<String> },
     /// Run the active PHP with the Open AMPP php.ini.
     #[command(disable_help_flag = true)]
     Php {
@@ -62,6 +64,10 @@ enum Cmd {
     },
     /// Print where Open AMPP keeps its data.
     Paths,
+    /// Check versions, ports, projects and the catalog, and say how to fix what is wrong.
+    Doctor,
+    /// Open the site (or a project) in the browser.
+    Open { project: Option<String> },
 }
 
 #[derive(Subcommand)]
@@ -103,6 +109,15 @@ impl From<ToolArg> for Tool {
     }
 }
 
+/// Something `ampp stop` can stop: a service or Mailpit.
+#[derive(Clone, Copy, ValueEnum)]
+enum ServiceArg {
+    Apache,
+    Php,
+    Mariadb,
+    Mailpit,
+}
+
 #[derive(Clone, Copy, ValueEnum)]
 enum Target {
     Apache,
@@ -110,6 +125,7 @@ enum Target {
     Mariadb,
     Phpmyadmin,
     Composer,
+    Mailpit,
 }
 
 enum Resolved {
@@ -125,6 +141,7 @@ impl Target {
             Target::Mariadb => Resolved::Tool(Tool::Mariadb),
             Target::Phpmyadmin => Resolved::Extra(Extra::Phpmyadmin),
             Target::Composer => Resolved::Extra(Extra::Composer),
+            Target::Mailpit => Resolved::Extra(Extra::Mailpit),
         }
     }
 }
@@ -169,10 +186,13 @@ async fn run(cli: Cli) -> Result<ExitCode> {
     match cli.command {
         Cmd::Status => status(&ctx, &Supervisor::new(ctx.paths.clone())).await,
         Cmd::Up => return up(&ctx).await,
-        Cmd::Stop { tool } => {
+        Cmd::Stop { service } => {
             let sup = Supervisor::new(ctx.paths.clone());
-            match tool {
-                Some(t) => sup.stop(t.into()).await?,
+            match service {
+                Some(ServiceArg::Apache) => sup.stop(Tool::Apache).await?,
+                Some(ServiceArg::Php) => sup.stop(Tool::Php).await?,
+                Some(ServiceArg::Mariadb) => sup.stop(Tool::Mariadb).await?,
+                Some(ServiceArg::Mailpit) => sup.stop_mail().await,
                 None => sup.stop_all().await,
             }
             status(&ctx, &sup).await;
@@ -189,6 +209,7 @@ async fn run(cli: Cli) -> Result<ExitCode> {
         }
         Cmd::Project(cmd) => project(&mut ctx, cmd)?,
         Cmd::Trust => trust(&ctx)?,
+        Cmd::RootPassword { password } => root_password(&mut ctx, password.unwrap_or_default()).await?,
         Cmd::Php { args } => return passthrough(&ctx, "php", args),
         Cmd::Composer { args } => return passthrough(&ctx, "composer", args),
         Cmd::Mariadb { args } => return passthrough(&ctx, "mariadb", args),
@@ -208,6 +229,8 @@ async fn run(cli: Cli) -> Result<ExitCode> {
             }
         }
         Cmd::Paths => println!("{}", ctx.paths.root().display()),
+        Cmd::Doctor => return doctor(&ctx).await,
+        Cmd::Open { project } => open(&ctx, project)?,
     }
     Ok(ExitCode::SUCCESS)
 }
@@ -227,14 +250,21 @@ async fn status(ctx: &Ctx, sup: &Supervisor) {
             println!("○ {name:<8} {}", tr!("detenido ({active})", "stopped ({active})"));
         }
     }
+    let mail = sup.mail_status().await;
+    if mail.running {
+        let port = mail.web_port.unwrap_or(ctx.state.ports.mail_web);
+        println!("● {:<8} {} http://localhost:{port}, PID {}", "Mailpit", mail.version.unwrap_or_default(), mail.pid.unwrap_or(0));
+    } else if mail.installed {
+        println!("○ {:<8} {}", "Mailpit", tr!("detenido", "stopped"));
+    }
 }
 
 async fn up(ctx: &Ctx) -> Result<ExitCode> {
     let sup = Supervisor::new(ctx.paths.clone());
     sup.cleanup_orphans().await;
     let failures = sup.start_all(&ctx.state).await;
-    for (tool, e) in &failures {
-        eprintln!("✗ {}: {e}", tool.label());
+    for e in &failures {
+        eprintln!("✗ {e}");
     }
     status(ctx, &sup).await;
     let running = sup.status().await.iter().any(|s| s.running && !s.external);
@@ -434,6 +464,24 @@ fn project(ctx: &mut Ctx, cmd: ProjectCmd) -> Result<()> {
     Ok(())
 }
 
+async fn root_password(ctx: &mut Ctx, password: String) -> Result<()> {
+    ampp_core::db::set_root_password(&ctx.paths, &ctx.state, &password).await?;
+    let id = ctx.state.active.get(&Tool::Mariadb).cloned().unwrap_or_default();
+    let series = ampp_core::install::locate(&ctx.paths, Tool::Mariadb, &id)?.minor_version();
+    match password.is_empty() {
+        true => ctx.state.mariadb_root_passwords.remove(&series),
+        false => ctx.state.mariadb_root_passwords.insert(series.clone(), password.clone()),
+    };
+    ampp_core::db::client_options(&ctx.paths, &ctx.state)?;
+    ctx.save()?;
+    if password.is_empty() {
+        println!("{}", tr!("root de MariaDB {series} ya no tiene contraseña.", "MariaDB {series} root no longer has a password."));
+    } else {
+        println!("{}", tr!("Contraseña de root de MariaDB {series} cambiada. Reinicia Apache para phpMyAdmin.", "MariaDB {series} root password changed. Restart Apache for phpMyAdmin."));
+    }
+    Ok(())
+}
+
 fn trust(ctx: &Ctx) -> Result<()> {
     let ca = tls::ca_cert_path(&ctx.paths);
     if tls::is_trusted(&ctx.paths) == Some(true) {
@@ -442,6 +490,70 @@ fn trust(ctx: &Ctx) -> Result<()> {
     }
     tls::trust(&ctx.paths)?;
     println!("{}", tr!("Listo: la CA local es de confianza. Reinicia el navegador.", "Done: the local CA is trusted. Restart your browser."));
+    Ok(())
+}
+
+async fn doctor(ctx: &Ctx) -> Result<ExitCode> {
+    use ampp_core::doctor::{self, Level};
+    let mut checks = doctor::run(&ctx.paths, &ctx.state, &Supervisor::new(ctx.paths.clone())).await;
+    let catalog = tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        Manifest::fetch(ampp_core::catalog::CATALOG_URL),
+    )
+    .await;
+    checks.push(match catalog {
+        Ok(Ok(_)) => doctor::Check {
+            level: Level::Ok,
+            title: tr!("Catálogo publicado al día", "Published catalog reachable"),
+            hint: None,
+        },
+        _ => doctor::Check {
+            level: Level::Warn,
+            title: tr!("No se pudo descargar el catálogo publicado", "Could not download the published catalog"),
+            hint: Some(tr!(
+                "se usa el incluido en la app, que puede no tener los últimos parches",
+                "the bundled one is used, which may lack the latest patches"
+            )),
+        },
+    });
+    for c in &checks {
+        let mark = match c.level {
+            Level::Ok => "✓",
+            Level::Warn => "!",
+            Level::Error => "✗",
+        };
+        println!("{mark} {}", c.title);
+        if let Some(hint) = &c.hint {
+            println!("    → {hint}");
+        }
+    }
+    let errors = checks.iter().filter(|c| c.level == Level::Error).count();
+    let warnings = checks.iter().filter(|c| c.level == Level::Warn).count();
+    println!("\n{}", tr!("{errors} errores, {warnings} avisos", "{errors} errors, {warnings} warnings"));
+    Ok(if errors > 0 { ExitCode::FAILURE } else { ExitCode::SUCCESS })
+}
+
+fn open(ctx: &Ctx, project: Option<String>) -> Result<()> {
+    let url = match project {
+        None => format!("http://localhost:{}/", ctx.state.ports.http),
+        Some(name) => {
+            let p = ctx.state.projects.iter().find(|p| p.name == name).ok_or_else(|| {
+                tr!("no existe el proyecto {name} (mira ampp project ls)", "there is no project called {name} (see ampp project ls)")
+            })?;
+            projects::url(&ctx.state, p)
+        }
+    };
+    println!("{url}");
+    let status = if cfg!(target_os = "macos") {
+        std::process::Command::new("open").arg(&url).status()
+    } else if cfg!(windows) {
+        std::process::Command::new("cmd").args(["/C", "start", "", &url]).status()
+    } else {
+        std::process::Command::new("xdg-open").arg(&url).status()
+    };
+    if !status.is_ok_and(|s| s.success()) {
+        return Err(tr!("no se pudo abrir el navegador", "could not open the browser").into());
+    }
     Ok(())
 }
 

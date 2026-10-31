@@ -14,6 +14,8 @@ export interface Ports {
   https: number;
   mariadb: number;
   php_fcgi_base: number;
+  mail_smtp: number;
+  mail_web: number;
 }
 
 export interface Project {
@@ -39,7 +41,7 @@ export interface ProjectsInfo {
   active_series: string | null;
 }
 
-export type Extra = "phpmyadmin" | "composer";
+export type Extra = "phpmyadmin" | "composer" | "mailpit";
 
 export interface PhpSettings {
   directives: Record<string, string>;
@@ -55,6 +57,7 @@ export interface AppState {
   projects: Project[];
   php: PhpSettings;
   extras: Partial<Record<Extra, string>>;
+  start_services_on_open: boolean;
 }
 
 export interface PhpConfig {
@@ -91,6 +94,8 @@ export type Location = "www" | "data" | "logs" | "php_ini" | "certs";
 
 export interface MariadbInfo {
   connection: { host: string; port: number; user: string; password: string; socket: string | null };
+  /** Series of the active MariaDB ("11.4"): the root password belongs to its data folder. */
+  series: string | null;
   /** `null` while MariaDB is not running. */
   databases: { name: string; tables: number; size: number; system: boolean }[] | null;
 }
@@ -121,6 +126,19 @@ export interface ServiceStatus {
   /** PHP only: other versions running for projects, newest first. */
   extra_php: { version: string; port: number; pid: number | null }[];
 }
+
+export interface MailStatus {
+  installed: boolean;
+  running: boolean;
+  pid: number | null;
+  version: string | null;
+  web_port: number | null;
+  error: string | null;
+  external: boolean;
+}
+
+/** Log files the viewer can show (`logs/<name>.log`). */
+export type LogName = "apache" | "apache-access" | "php" | "mariadb" | "mailpit";
 
 export const HOMEBREW = "homebrew";
 
@@ -167,7 +185,7 @@ export const api = {
   restartService: (tool: Tool) => invoke<void>("restart_service", { tool }),
   startAll: () => invoke<string[]>("start_all"),
   stopAll: () => invoke<void>("stop_all"),
-  readLog: (tool: Tool) => invoke<string>("read_log", { tool }),
+  readLog: (name: LogName) => invoke<string>("read_log", { name }),
   getPhpConfig: () => invoke<PhpConfig>("get_php_config"),
   /** Returns `true` if PHP was restarted to apply the changes. */
   savePhpSettings: (settings: PhpSettings) => invoke<boolean>("save_php_settings", { settings }),
@@ -176,9 +194,11 @@ export const api = {
   uninstallExtra: (name: Extra) => invoke<void>("uninstall_extra", { name }),
   addShimsToPath: () => invoke<string[]>("add_shims_to_path"),
   openLocation: (what: Location) => invoke<void>("open_location", { what }),
-  setPorts: (http: number, mariadb: number) => invoke<void>("set_ports", { http, mariadb }),
+  setPorts: (ports: Ports) => invoke<void>("set_ports", { ports }),
   mariadbInfo: () => invoke<MariadbInfo>("mariadb_info"),
   createDatabase: (name: string) => invoke<void>("create_database", { name }),
+  /** Sets the root password of the active MariaDB series; empty removes it. */
+  setMariadbPassword: (password: string) => invoke<void>("set_mariadb_password", { password }),
   getProjects: () => invoke<ProjectsInfo>("get_projects"),
   /** Adds a project or replaces `previous`. Returns `true` if Apache was restarted to apply it. */
   saveProject: (previous: string | null, project: Project) => invoke<boolean>("save_project", { previous, project }),
@@ -186,6 +206,12 @@ export const api = {
   removeProject: (name: string) => invoke<boolean>("remove_project", { name }),
   openProjectFolder: (name: string) => invoke<void>("open_project_folder", { name }),
   getTls: () => invoke<TlsInfo>("get_tls"),
+  mailStatus: () => invoke<MailStatus>("mail_status"),
+  getStartup: () => invoke<{ open_at_login: boolean; start_services: boolean }>("get_startup"),
+  setStartup: (openAtLogin: boolean, startServices: boolean) =>
+    invoke<void>("set_startup", { openAtLogin, startServices }),
+  startMail: () => invoke<void>("start_mail"),
+  stopMail: () => invoke<void>("stop_mail"),
   /** Adds the local CA to the user's trust store; the system asks for confirmation. */
   trustCa: () => invoke<void>("trust_ca"),
   onInstallProgress: (cb: (p: InstallProgress) => void): Promise<UnlistenFn> =>

@@ -98,6 +98,16 @@ const es = {
     create: "Crear",
     openPma: "Abrir en phpMyAdmin ↗",
     showSystem: "Mostrar las del sistema",
+    change: "Cambiar",
+    newPassword: "Nueva contraseña (vacía para quitarla)",
+    setPassword: "Guardar",
+    removePassword: "Quitar contraseña",
+    cancel: "Cancelar",
+    passwordHint: (series: string | null) =>
+      `Cambia root en MariaDB ${series ?? ""}: cada versión guarda sus datos aparte. phpMyAdmin, la terminal y Open AMPP la usan solos.`,
+    passwordNeedsServer: "Inicia MariaDB para cambiarla",
+    passwordSaved: "Contraseña guardada. phpMyAdmin ya la usa.",
+    passwordRemoved: "root ya no tiene contraseña.",
   },
 
   versions: {
@@ -116,7 +126,15 @@ const es = {
     empty: (tool: string) => `Aún no hay versiones de ${tool} para tu sistema en el catálogo.`,
   },
 
-  logs: { follow: "Seguir el final", empty: "Sin registros todavía." },
+  logs: {
+    follow: "Seguir el final",
+    empty: "Sin registros todavía.",
+    access: "Accesos de Apache",
+    search: "Buscar en el log…",
+    matches: (n: number) => (n === 1 ? "1 línea" : `${n} líneas`),
+    noMatches: "Ninguna línea coincide.",
+    folder: "Carpeta de logs ↗",
+  },
 
   php: {
     installFirst: "Instala una versión de PHP para configurarla.",
@@ -156,6 +174,8 @@ const es = {
   tools: {
     phpmyadmin: "Administra MariaDB desde el navegador en /phpmyadmin. Entra directo como root, como en XAMPP.",
     composer: "Gestor de dependencias de PHP. Usa siempre la versión de PHP activa y su php.ini.",
+    mailpit: "Atrapa los correos que envía PHP con mail() y los muestra en una bandeja web. Ningún correo sale de tu máquina.",
+    mailpitHint: "Se inicia con Iniciar todo",
     available: (v: string) => `v${v} disponible`,
     unavailable: "No disponible",
     open: "Abrir ↗",
@@ -176,14 +196,30 @@ const es = {
     ports: "Puertos",
     portsHint: "Los servicios en marcha usan los puertos nuevos al reiniciarse.",
     httpPort: "Apache (HTTP)",
+    httpsPort: "Apache (HTTPS)",
     mariadbPort: "MariaDB",
+    phpBase: "Base de PHP (FastCGI)",
+    phpBaseHint: (base: number) => `Cada versión usa base + major·10 + minor: PHP 8.4 → ${base + 84}`,
+    mailSmtpPort: "Mailpit (SMTP)",
+    mailWebPort: "Mailpit (bandeja web)",
     savePorts: "Guardar puertos",
     portsSaved: "Puertos guardados.",
+    startup: "Inicio",
+    openAtLogin: "Abrir Open AMPP al iniciar sesión",
+    openAtLoginHint: "Se abre en la bandeja del sistema, sin mostrar la ventana.",
+    startServices: "Iniciar los servicios al abrir la app",
+    startServicesHint: "Como pulsar Iniciar todo: Apache, PHP, MariaDB y Mailpit si está instalado.",
     folders: "Carpetas",
     www: "Tus sitios (www)",
     logs: "Logs",
     data: "Datos de Open AMPP",
     trayHint: "Al cerrar la ventana, Open AMPP sigue en la bandeja del sistema con los servicios activos.",
+  },
+
+  mail: {
+    open: "Abrir bandeja ↗",
+    running: (smtp: number) => `Atrapando los correos de PHP · SMTP 127.0.0.1:${smtp}`,
+    stopped: "Detenido: los correos que envíe PHP fallarán hasta iniciarlo.",
   },
 
   update: {
@@ -292,6 +328,16 @@ const en: Messages = {
     create: "Create",
     openPma: "Open in phpMyAdmin ↗",
     showSystem: "Show system ones",
+    change: "Change",
+    newPassword: "New password (empty to remove it)",
+    setPassword: "Save",
+    removePassword: "Remove password",
+    cancel: "Cancel",
+    passwordHint: (series) =>
+      `Changes root in MariaDB ${series ?? ""}: each version keeps its data apart. phpMyAdmin, the terminal and Open AMPP use it on their own.`,
+    passwordNeedsServer: "Start MariaDB to change it",
+    passwordSaved: "Password saved. phpMyAdmin already uses it.",
+    passwordRemoved: "root no longer has a password.",
   },
 
   versions: {
@@ -310,7 +356,15 @@ const en: Messages = {
     empty: (tool) => `There are no ${tool} versions for your system in the catalog yet.`,
   },
 
-  logs: { follow: "Follow the end", empty: "No log entries yet." },
+  logs: {
+    follow: "Follow the end",
+    empty: "No log entries yet.",
+    access: "Apache access",
+    search: "Search the log…",
+    matches: (n) => (n === 1 ? "1 line" : `${n} lines`),
+    noMatches: "No line matches.",
+    folder: "Logs folder ↗",
+  },
 
   php: {
     installFirst: "Install a PHP version to configure it.",
@@ -350,6 +404,8 @@ const en: Messages = {
   tools: {
     phpmyadmin: "Manage MariaDB from the browser at /phpmyadmin. Logs straight in as root, like XAMPP.",
     composer: "PHP dependency manager. Always uses the active PHP version and its php.ini.",
+    mailpit: "Catches the mail PHP sends with mail() and shows it in a web inbox. No message ever leaves your machine.",
+    mailpitHint: "Starts with Start all",
     available: (v) => `v${v} available`,
     unavailable: "Not available",
     open: "Open ↗",
@@ -370,14 +426,30 @@ const en: Messages = {
     ports: "Ports",
     portsHint: "Running services pick up the new ports when restarted.",
     httpPort: "Apache (HTTP)",
+    httpsPort: "Apache (HTTPS)",
     mariadbPort: "MariaDB",
+    phpBase: "PHP base (FastCGI)",
+    phpBaseHint: (base) => `Each version uses base + major·10 + minor: PHP 8.4 → ${base + 84}`,
+    mailSmtpPort: "Mailpit (SMTP)",
+    mailWebPort: "Mailpit (web inbox)",
     savePorts: "Save ports",
     portsSaved: "Ports saved.",
+    startup: "Startup",
+    openAtLogin: "Open Open AMPP when you sign in",
+    openAtLoginHint: "It opens in the system tray, without showing the window.",
+    startServices: "Start the services when the app opens",
+    startServicesHint: "Like pressing Start all: Apache, PHP, MariaDB and Mailpit if installed.",
     folders: "Folders",
     www: "Your sites (www)",
     logs: "Logs",
     data: "Open AMPP data",
     trayHint: "Closing the window keeps Open AMPP in the system tray with the services running.",
+  },
+
+  mail: {
+    open: "Open inbox ↗",
+    running: (smtp) => `Catching PHP's mail · SMTP 127.0.0.1:${smtp}`,
+    stopped: "Stopped: mail sent by PHP fails until it starts.",
   },
 
   update: {

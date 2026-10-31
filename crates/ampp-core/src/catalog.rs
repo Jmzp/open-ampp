@@ -78,7 +78,7 @@ pub struct Package {
     pub size: Option<u64>,
 }
 
-/// Platform-independent helper tool (phpMyAdmin, Composer): a single file or an archive.
+/// Helper tool (phpMyAdmin, Composer, Mailpit): a single file or an archive.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ExtraFile {
     pub name: Extra,
@@ -90,14 +90,42 @@ pub struct ExtraFile {
     pub archive: Option<ArchiveKind>,
     #[serde(default)]
     pub size: Option<u64>,
+    /// Native builds only (Mailpit): the platform the file is for.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub os: Option<Os>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub arch: Option<Arch>,
+}
+
+impl ExtraFile {
+    fn runs_on(&self, platform: Option<Platform>) -> bool {
+        match (self.os, self.arch) {
+            (None, None) => true,
+            (os, arch) => platform.is_some_and(|p| os.is_none_or(|o| o == p.os) && arch.is_none_or(|a| a == p.arch)),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Manifest {
     pub schema: u32,
     pub packages: Vec<Package>,
-    #[serde(default)]
+    /// Platform-independent tools.
+    #[serde(default, deserialize_with = "known_extras")]
     pub extras: Vec<ExtraFile>,
+    /// Tools with one build per platform. A key of its own because builds up to 0.2.0 fail to
+    /// read the whole catalog on an unknown name in `extras`; this one they simply ignore.
+    #[serde(default, deserialize_with = "known_extras")]
+    pub native_extras: Vec<ExtraFile>,
+}
+
+/// Skips tools this build does not know, so adding one to the catalog never breaks older apps.
+fn known_extras<'de, D>(d: D) -> std::result::Result<Vec<ExtraFile>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw = Vec::<serde_json::Value>::deserialize(d)?;
+    Ok(raw.into_iter().filter_map(|v| serde_json::from_value(v).ok()).collect())
 }
 
 impl Manifest {
@@ -162,8 +190,13 @@ impl Manifest {
         pkgs
     }
 
+    /// The tool's file for the platform this process runs on.
     pub fn extra(&self, name: Extra) -> Option<&ExtraFile> {
-        self.extras.iter().find(|e| e.name == name)
+        self.extra_for(name, Platform::current())
+    }
+
+    pub fn extra_for(&self, name: Extra, platform: Option<Platform>) -> Option<&ExtraFile> {
+        self.extras.iter().chain(&self.native_extras).find(|e| e.name == name && e.runs_on(platform))
     }
 
     pub fn find(&self, tool: Tool, version: &str, platform: Platform) -> Result<&Package> {
@@ -206,6 +239,40 @@ mod tests {
     }
 
     #[test]
+    fn native_extras_match_the_platform_and_unknown_tools_are_skipped() {
+        let json = r#"{"schema":1,"packages":[],
+            "extras":[{"name":"composer","version":"2.8.0","url":"u","sha256":"00"},
+                      {"name":"adminer","version":"5.0","url":"u","sha256":"00"}],
+            "native_extras":[
+                {"name":"mailpit","version":"1.32.0","url":"linux","sha256":"00","archive":"tar-gz","os":"linux","arch":"x64"},
+                {"name":"mailpit","version":"1.32.0","url":"mac","sha256":"00","archive":"tar-gz","os":"macos","arch":"arm64"},
+                {"name":"futuretool","version":"1","url":"u","sha256":"00","os":"linux","arch":"x64"}]}"#;
+        let m = Manifest::parse(json).unwrap();
+        assert_eq!(m.extras.len(), 1, "an unknown tool must not break the catalog");
+        assert_eq!(m.native_extras.len(), 2);
+        let mac = Platform { os: Os::Macos, arch: Arch::Arm64 };
+        assert_eq!(m.extra_for(Extra::Mailpit, Some(LINUX_X64)).unwrap().url, "linux");
+        assert_eq!(m.extra_for(Extra::Mailpit, Some(mac)).unwrap().url, "mac");
+        assert!(m.extra_for(Extra::Mailpit, Some(Platform { os: Os::Windows, arch: Arch::X64 })).is_none());
+        assert!(m.extra_for(Extra::Mailpit, None).is_none());
+        assert!(m.extra_for(Extra::Composer, None).is_some(), "platform-independent tools run anywhere");
+    }
+
+    #[test]
+    fn old_builds_still_read_a_catalog_with_native_extras() {
+        // What 0.2.0 sees: it has no `native_extras` field, and serde ignores unknown keys.
+        #[derive(Deserialize)]
+        #[allow(dead_code)]
+        struct OldManifest {
+            schema: u32,
+            packages: Vec<Package>,
+            #[serde(default)]
+            extras: Vec<ExtraFile>,
+        }
+        assert!(serde_json::from_str::<OldManifest>(BUNDLED_MANIFEST).is_ok());
+    }
+
+    #[test]
     fn rejects_unknown_schema() {
         assert!(Manifest::parse(r#"{"schema":99,"packages":[]}"#).is_err());
     }
@@ -222,6 +289,7 @@ mod tests {
                 pkg(Tool::Apache, "2.4.62", Os::Linux),
             ],
             extras: Vec::new(),
+            native_extras: Vec::new(),
         };
         let versions: Vec<_> = m.for_platform(LINUX_X64).iter().map(|p| p.version.as_str()).collect();
         assert_eq!(versions, ["2.4.62", "8.10.0", "8.3.12", "8.1.30"]);
@@ -238,6 +306,7 @@ mod tests {
                 pkg(Tool::Php, "8.4.1", Os::Linux),
             ],
             extras: Vec::new(),
+            native_extras: Vec::new(),
         };
         let update = |v| m.patch_update(Tool::Php, v, LINUX_X64).map(|p| p.version.clone());
         assert_eq!(update("8.3.9").as_deref(), Some("8.3.12"));
