@@ -25,7 +25,7 @@ Varias versiones de cada herramienta, una app de escritorio amigable y el mismo 
 
 Open AMPP es una alternativa moderna a XAMPP / MAMP / LAMPP. Abres la app, eliges qué versiones quieres y con un clic tienes un servidor web con PHP y una base de datos funcionando en tu máquina.
 
-- 🧩 **Multiversión**: instala PHP 8.2, 8.3, 8.4 y 8.5 (y varias versiones de MariaDB) lado a lado y cambia entre ellas cuando quieras.
+- 🧩 **Multiversión**: instala PHP 8.2, 8.3, 8.4 y 8.5 (y varias versiones de MariaDB) lado a lado y cambia entre ellas cuando quieras. En Windows también están PHP 7.2 y 7.4 para proyectos antiguos.
 - 🌐 **Proyectos**: sirve cualquier carpeta en su propio dominio `*.localhost`, cada una con su versión de PHP y HTTPS opcional, sin editar el archivo hosts.
 - 🐘 **PHP al estilo XAMPP**: el `php.ini` por defecto es el de XAMPP, con sus extensiones (`mysqli`, `pdo_mysql`, `mbstring`, `curl`, `openssl`…) más `intl`, `gd`, `zip`, `sodium` y `opcache`.
 - 🗄️ **phpMyAdmin y Composer** a un clic, ya conectados a las versiones activas.
@@ -42,6 +42,7 @@ Open AMPP es una alternativa moderna a XAMPP / MAMP / LAMPP. Abres la app, elige
 | | Windows x64 | macOS (Intel / Apple Silicon) | Linux (x64 / arm64) |
 |---|:---:|:---:|:---:|
 | **PHP** 8.2 · 8.3 · 8.4 · 8.5 | ✅ | ✅ | ✅ |
+| **PHP 7** 7.2 · 7.4 (antiguas, sin soporte) | ✅ | — | — |
 | **MariaDB** 10.11 · 11.4 · 11.8 · 12.3 (LTS) | ✅ | ✅ | ✅ |
 | **Apache** 2.4 | ✅ | ✅ | ✅ |
 | **phpMyAdmin** · **Composer** | ✅ | ✅ | ✅ |

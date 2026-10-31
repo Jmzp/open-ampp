@@ -413,6 +413,26 @@
     },
     {
       "tool": "php",
+      "version": "7.2.34",
+      "os": "windows",
+      "arch": "x64",
+      "url": "https://downloads.php.net/~windows/releases/archives/php-7.2.34-Win32-VC15-x64.zip",
+      "sha256": "3a3d026aacf8da57ff01ace2f78f8f57494744bfb669f8545cc8f9c4ff0450a5",
+      "archive": "zip",
+      "size": null
+    },
+    {
+      "tool": "php",
+      "version": "7.4.33",
+      "os": "windows",
+      "arch": "x64",
+      "url": "https://downloads.php.net/~windows/releases/archives/php-7.4.33-Win32-vc15-x64.zip",
+      "sha256": "cdbb85b45f38f282f05764ca08648b5f92db99c75b2fb3848eb4a559f6553b48",
+      "archive": "zip",
+      "size": null
+    },
+    {
+      "tool": "php",
       "version": "8.2.35",
       "os": "windows",
       "arch": "x64",

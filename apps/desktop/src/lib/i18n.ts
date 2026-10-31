@@ -114,6 +114,9 @@ const es = {
     emptyMac: (tool: string, formula: string) =>
       `Aún no hay binarios de ${tool} para macOS en el catálogo. Mientras tanto puedes instalarlo con Homebrew (brew install ${formula}) y reiniciar Open AMPP: se detecta solo.`,
     empty: (tool: string) => `Aún no hay versiones de ${tool} para tu sistema en el catálogo.`,
+    legacyBadge: "versiones antiguas",
+    legacyHint:
+      "Para proyectos que aún no funcionan con PHP 8. Ya no reciben parches de seguridad: úsalas solo en local y migra cuando puedas.",
   },
 
   logs: { follow: "Seguir el final", empty: "Sin registros todavía." },
@@ -308,6 +311,8 @@ const en: Messages = {
     emptyMac: (tool, formula) =>
       `There are no ${tool} builds for macOS in the catalog yet. Meanwhile you can install it with Homebrew (brew install ${formula}) and restart Open AMPP: it is detected automatically.`,
     empty: (tool) => `There are no ${tool} versions for your system in the catalog yet.`,
+    legacyBadge: "legacy versions",
+    legacyHint: "For projects that do not run on PHP 8 yet. They no longer get security fixes: use them locally only and migrate when you can.",
   },
 
   logs: { follow: "Follow the end", empty: "No log entries yet." },
