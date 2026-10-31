@@ -22,6 +22,14 @@ UA = {"User-Agent": "Mozilla/5.0 (open-ampp catalog generator)"}
 REPO = "Jmzp/open-ampp"
 
 PHP_MINORS = ["8.2", "8.3", "8.4", "8.5"]
+# End-of-life PHP 7 releases for old projects, Windows only: static-php-cli (our macOS and Linux
+# builds) does not support PHP 7. They are final, so the archived php.net zips are pinned with
+# the SHA-256 that php.net published (its sha256sum.txt no longer lists them). php.net archived
+# only the thread-safe builds of these versions, which serve FastCGI just the same.
+PHP_LEGACY_WINDOWS = [
+    ("7.2.34", "php-7.2.34-Win32-VC15-x64.zip", "3a3d026aacf8da57ff01ace2f78f8f57494744bfb669f8545cc8f9c4ff0450a5"),
+    ("7.4.33", "php-7.4.33-Win32-vc15-x64.zip", "cdbb85b45f38f282f05764ca08648b5f92db99c75b2fb3848eb4a559f6553b48"),
+]
 MARIADB_LTS = ["10.11", "11.4", "11.8", "12.3"]
 
 
@@ -71,6 +79,8 @@ def php_windows():
     for v in latest_per_minor(by_version, PHP_MINORS):
         sha, name = by_version[v]
         yield pkg("php", v, "windows", "x64", base + name, sha, "zip")
+    for v, name, sha in PHP_LEGACY_WINDOWS:
+        yield pkg("php", v, "windows", "x64", base + "archives/" + name, sha, "zip")
 
 
 def mariadb():

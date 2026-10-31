@@ -23,6 +23,9 @@ function EmptyHint({ tool, platform }: { tool: Tool; platform: Platform | null }
 
 const key = (tool: Tool, version: string) => `${tool}@${version}`;
 
+/** PHP 7 is end of life: its versions are listed apart so they read as legacy. */
+const isLegacyPhp = (entry: CatalogEntry) => entry.tool === "php" && /^[0-7]\./.test(entry.detail ?? entry.version);
+
 export function Versions({ onChanged }: { onChanged: () => void }) {
   const [catalog, setCatalog] = useState<CatalogEntry[]>([]);
   const [progress, setProgress] = useState<Record<string, InstallProgress>>({});
@@ -90,84 +93,92 @@ export function Versions({ onChanged }: { onChanged: () => void }) {
     }
   };
 
+  const row = (entry: CatalogEntry) => {
+    const k = key(entry.tool, entry.version);
+    // An upgrade reports progress under the new version.
+    const upgradeKey = entry.update ? key(entry.tool, entry.update) : null;
+    const p = progress[k] ?? (upgradeKey ? progress[upgradeKey] : undefined);
+    const isBusy = busy.has(k) || (upgradeKey !== null && busy.has(upgradeKey));
+    return (
+      <li key={k} className="row">
+        <span className="version">{versionLabel(entry.version, entry.detail)}</span>
+        <span className="meta">
+          {entry.active && <span className="badge">{t.versions.active}</span>}
+          {entry.installed && !entry.active && <span className="badge muted-badge">{t.versions.installed}</span>}
+          {entry.system && <span className="muted">{t.versions.systemInstall}</span>}
+          {!entry.installed && entry.size != null && (
+            <span className="muted">{formatBytes(entry.size)}</span>
+          )}
+        </span>
+        {isBusy && p ? (
+          <ProgressBar progress={p} />
+        ) : (
+          <span className="actions">
+            {!entry.installed && (
+              <button disabled={isBusy} onClick={() => run(entry, () => api.install(entry.tool, entry.version))}>
+                {isBusy ? t.versions.preparing : t.versions.install}
+              </button>
+            )}
+            {entry.update && (
+              <button
+                title={t.versions.updateHint}
+                disabled={isBusy}
+                onClick={() =>
+                  run(entry, async () => {
+                    await api.upgrade(entry.tool, entry.version);
+                  })
+                }
+              >
+                {t.versions.updateTo(entry.update)}
+              </button>
+            )}
+            {entry.installed && !entry.active && (
+              <button
+                className="secondary"
+                disabled={isBusy}
+                onClick={() => run(entry, () => api.setActive(entry.tool, entry.version))}
+              >
+                {t.versions.makeDefault}
+              </button>
+            )}
+            {entry.installed && !entry.system && (
+              <button
+                className="ghost"
+                disabled={isBusy}
+                onClick={() => run(entry, () => api.uninstall(entry.tool, entry.version))}
+              >
+                {t.versions.uninstall}
+              </button>
+            )}
+          </span>
+        )}
+      </li>
+    );
+  };
+
   const tools = (Object.keys(TOOL_LABELS) as Tool[]).map((tool) => ({
     tool,
-    entries: catalog.filter((e) => e.tool === tool),
+    entries: catalog.filter((e) => e.tool === tool && !isLegacyPhp(e)),
+    legacy: catalog.filter((e) => e.tool === tool && isLegacyPhp(e)),
   }));
 
   return (
     <section className="versions">
       {error && <p className="error">{error}</p>}
-      {tools.map(({ tool, entries }) => (
+      {tools.map(({ tool, entries, legacy }) => (
         <div key={tool} className="card">
           <h2>{TOOL_LABELS[tool]}</h2>
-          {entries.length === 0 ? (
-            <EmptyHint tool={tool} platform={platform} />
-          ) : (
-            <ul className="rows">
-              {entries.map((entry) => {
-                const k = key(entry.tool, entry.version);
-                // An upgrade reports progress under the new version.
-                const upgradeKey = entry.update ? key(entry.tool, entry.update) : null;
-                const p = progress[k] ?? (upgradeKey ? progress[upgradeKey] : undefined);
-                const isBusy = busy.has(k) || (upgradeKey !== null && busy.has(upgradeKey));
-                return (
-                  <li key={k} className="row">
-                    <span className="version">{versionLabel(entry.version, entry.detail)}</span>
-                    <span className="meta">
-                      {entry.active && <span className="badge">{t.versions.active}</span>}
-                      {entry.installed && !entry.active && <span className="badge muted-badge">{t.versions.installed}</span>}
-                      {entry.system && <span className="muted">{t.versions.systemInstall}</span>}
-                      {!entry.installed && entry.size != null && (
-                        <span className="muted">{formatBytes(entry.size)}</span>
-                      )}
-                    </span>
-                    {isBusy && p ? (
-                      <ProgressBar progress={p} />
-                    ) : (
-                      <span className="actions">
-                        {!entry.installed && (
-                          <button disabled={isBusy} onClick={() => run(entry, () => api.install(tool, entry.version))}>
-                            {isBusy ? t.versions.preparing : t.versions.install}
-                          </button>
-                        )}
-                        {entry.update && (
-                          <button
-                            title={t.versions.updateHint}
-                            disabled={isBusy}
-                            onClick={() =>
-                              run(entry, async () => {
-                                await api.upgrade(tool, entry.version);
-                              })
-                            }
-                          >
-                            {t.versions.updateTo(entry.update)}
-                          </button>
-                        )}
-                        {entry.installed && !entry.active && (
-                          <button
-                            className="secondary"
-                            disabled={isBusy}
-                            onClick={() => run(entry, () => api.setActive(tool, entry.version))}
-                          >
-                            {t.versions.makeDefault}
-                          </button>
-                        )}
-                        {entry.installed && !entry.system && (
-                          <button
-                            className="ghost"
-                            disabled={isBusy}
-                            onClick={() => run(entry, () => api.uninstall(tool, entry.version))}
-                          >
-                            {t.versions.uninstall}
-                          </button>
-                        )}
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
+          {entries.length === 0 && legacy.length === 0 && <EmptyHint tool={tool} platform={platform} />}
+          {entries.length > 0 && <ul className="rows">{entries.map(row)}</ul>}
+          {legacy.length > 0 && (
+            // Folded unless one of them is installed, so they do not pass for current versions.
+            <details className="legacy" open={legacy.some((e) => e.installed)}>
+              <summary>
+                PHP 7 <span className="badge warn-badge">{t.versions.legacyBadge}</span>
+              </summary>
+              <p className="muted">{t.versions.legacyHint}</p>
+              <ul className="rows">{legacy.map(row)}</ul>
+            </details>
           )}
         </div>
       ))}

@@ -133,6 +133,10 @@ input:focus, textarea:focus { outline: 2px solid color-mix(in srgb, var(--accent
 .save-bar { position: sticky; bottom: 0; display: flex; justify-content: flex-end; align-items: center; gap: 14px; padding: 12px 0; background: linear-gradient(transparent, var(--bg) 35%); }
 .snippet { background: #0d1117; color: #c9d1d9; border-radius: 8px; padding: 10px 12px; overflow-x: auto; font-size: 0.8rem; }
 details summary { cursor: pointer; margin: 6px 0; }
+.legacy { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--border); }
+.legacy summary { font-weight: 600; }
+.legacy summary .badge { margin-left: 6px; }
+.legacy > .muted { margin: 4px 0 0; font-size: 0.85rem; }
 code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.9em; }
 
 /* Projects */
