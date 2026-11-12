@@ -9,6 +9,7 @@ use crate::paths::AppPaths;
 use crate::ports;
 use crate::state::{PhpSettings, State};
 use crate::tls::ServerCert;
+use crate::tools::{self, Extra};
 
 const HTTPD_CONF: &str = include_str!("../../../templates/httpd.conf");
 const PHP_INI: &str = include_str!("../../../templates/php.ini");
@@ -231,6 +232,21 @@ fn system_timezone() -> String {
     iana_time_zone::get_timezone().unwrap_or_else(|_| "UTC".into())
 }
 
+/// With Mailpit installed, `mail()` hands every message to it instead of trying a real server.
+/// On Unix PHP pipes to `sendmail_path` (through `/bin/sh`, hence the quotes for paths with
+/// spaces); on Windows it talks SMTP directly. Goes before the user section so it can be overridden.
+fn php_mail_section(mailpit: &Path, smtp_port: u16) -> String {
+    if !mailpit.exists() {
+        return String::new();
+    }
+    let mut out = String::from("\n; --- Mailpit: mail() goes to the local inbox ---\n");
+    out.push_str(&format!("SMTP = 127.0.0.1\nsmtp_port = {smtp_port}\n"));
+    if !cfg!(windows) {
+        out.push_str(&format!("sendmail_path = \"'{}' sendmail -S 127.0.0.1:{smtp_port}\"\n", slash(mailpit)));
+    }
+    out
+}
+
 /// User settings appended to the end of `php.ini` (the last definition wins).
 fn php_user_section(settings: &PhpSettings) -> String {
     let mut out = String::new();
@@ -289,7 +305,8 @@ pub fn write_php(paths: &AppPaths, inst: &Installation, state: &State) -> Result
             ("mysql_port", &state.ports.mariadb.to_string()),
         ],
     );
-    write(&ini, &(base + &php_user_section(settings)))?;
+    let mail = php_mail_section(&tools::file(paths, Extra::Mailpit), state.ports.mail_smtp);
+    write(&ini, &(base + &mail + &php_user_section(settings)))?;
 
     let fpm_conf = if cfg!(windows) {
         None
@@ -614,6 +631,29 @@ mod tests {
         let user = ini.find("memory_limit = 1G").unwrap();
         assert!(user > base, "the user value must come after the base one");
         assert!(ini.trim_end().ends_with("xdebug.mode = debug"));
+        assert!(!ini.contains("Mailpit"), "no Mailpit, no mail section");
+    }
+
+    #[test]
+    fn php_ini_sends_mail_to_mailpit_when_installed() {
+        let tmp = tempfile::tempdir().unwrap();
+        let paths = AppPaths::new(tmp.path().join("Application Support"));
+        let inst = Installation { tool: Tool::Php, id: "8.4.1".into(), version: "8.4.1".into(), root: tmp.path().join("php"), system: false };
+        let mailpit = tools::file(&paths, Extra::Mailpit);
+        fs::create_dir_all(mailpit.parent().unwrap()).unwrap();
+        fs::write(&mailpit, "").unwrap();
+        let mut state = State::default();
+        state.ports.mail_smtp = 2025;
+        state.php.directives.insert("smtp_port".into(), "26".into());
+
+        let ini = fs::read_to_string(write_php(&paths, &inst, &state).unwrap().ini).unwrap();
+        let section = ini.find("; --- Mailpit").unwrap();
+        assert!(ini[section..].contains("SMTP = 127.0.0.1\nsmtp_port = 2025"));
+        if !cfg!(windows) {
+            let line = format!("sendmail_path = \"'{}' sendmail -S 127.0.0.1:2025\"", slash(&mailpit));
+            assert!(ini.contains(&line), "quoted so the space in the path survives /bin/sh");
+        }
+        assert!(ini.find("smtp_port = 26").unwrap() > section, "the user can still override it");
     }
 
     #[test]

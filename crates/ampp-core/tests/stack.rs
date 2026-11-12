@@ -68,8 +68,8 @@ async fn full_stack_serves_php_and_mariadb() {
 
     let supervisor = Supervisor::new(paths.clone());
     let failures = supervisor.start_all(&state).await;
-    for (tool, e) in &failures {
-        eprintln!("--- {tool:?} failed:\n{e}");
+    for e in &failures {
+        eprintln!("--- failed:\n{e}");
     }
     assert!(failures.is_empty());
 

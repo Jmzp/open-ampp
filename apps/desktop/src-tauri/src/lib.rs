@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use std::sync::{Mutex, RwLock};
 
 use ampp_core::install::{self, HOMEBREW};
-use ampp_core::state::{PhpSettings, Project};
+use ampp_core::state::{PhpSettings, Ports, Project};
 use ampp_core::{
     AppPaths, Extra, Manifest, Platform, ServiceStatus, State, Supervisor, Tool, config, installer, projects, services,
     tls, tools,
@@ -13,6 +13,7 @@ use ampp_core::{
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
 use ampp_core::tr;
+use tauri_plugin_autostart::ManagerExt as _;
 use tauri_plugin_opener::OpenerExt;
 
 /// Trailing log bytes shown in the log viewer.
@@ -332,7 +333,7 @@ async fn start_all(app: tauri::State<'_, AppState>) -> CommandResult<Vec<String>
         )));
     }
     let failures = app.supervisor.start_all(&state).await;
-    Ok(failures.into_iter().map(|(_, e)| e.to_string()).collect())
+    Ok(failures.into_iter().map(|e| e.to_string()).collect())
 }
 
 #[tauri::command]
@@ -342,9 +343,15 @@ async fn stop_all(app: tauri::State<'_, AppState>) -> CommandResult<()> {
 }
 
 
+/// Logs the viewer can show, by name. Only these files can be read from the UI.
+const LOG_FILES: &[&str] = &["apache", "apache-access", "php", "mariadb", "mailpit"];
+
 #[tauri::command]
-fn read_log(app: tauri::State<AppState>, tool: Tool) -> String {
-    services::tail(&app.supervisor.log_file(tool), LOG_VIEW_BYTES)
+fn read_log(app: tauri::State<AppState>, name: String) -> CommandResult<String> {
+    if !LOG_FILES.contains(&name.as_str()) {
+        return Err(CommandError(tr!("log desconocido: {name}", "unknown log: {name}")));
+    }
+    Ok(services::tail(&app.paths.logs().join(format!("{name}.log")), LOG_VIEW_BYTES))
 }
 
 /// Directives the PHP tab lets users edit through a form.
@@ -469,35 +476,67 @@ async fn install_extra(app: tauri::State<'_, AppState>, name: Extra) -> CommandR
         s.extras.insert(name, file.version.clone());
         Ok(())
     })?;
-    // Apache serves phpMyAdmin at /phpmyadmin, so its config must be regenerated.
-    if name == Extra::Phpmyadmin {
-        app.restart_if_running(Tool::Apache).await?;
+    match name {
+        // Apache serves phpMyAdmin at /phpmyadmin, so its config must be regenerated.
+        Extra::Phpmyadmin => {
+            app.restart_if_running(Tool::Apache).await?;
+        }
+        // PHP's php.ini now sends mail to it; start it if the stack is up.
+        Extra::Mailpit => {
+            if app.restart_if_running(Tool::Php).await? {
+                app.supervisor.start_mail(&app.snapshot()).await?;
+            }
+        }
+        Extra::Composer => {}
     }
     Ok(())
 }
 
 #[tauri::command]
 async fn uninstall_extra(app: tauri::State<'_, AppState>, name: Extra) -> CommandResult<()> {
+    // A running executable cannot be deleted on Windows.
+    if name == Extra::Mailpit {
+        app.supervisor.stop_mail().await;
+    }
     tools::uninstall(&app.paths, name)?;
     app.update(|s| {
         s.extras.remove(&name);
         Ok(())
     })?;
-    if name == Extra::Phpmyadmin {
-        app.restart_if_running(Tool::Apache).await?;
+    match name {
+        Extra::Phpmyadmin => {
+            app.restart_if_running(Tool::Apache).await?;
+        }
+        Extra::Mailpit => {
+            app.restart_if_running(Tool::Php).await?;
+        }
+        Extra::Composer => {}
     }
     Ok(())
 }
 
-/// Changes the HTTP and MariaDB ports. Running services keep the old ones until restarted.
 #[tauri::command]
-fn set_ports(app: tauri::State<AppState>, http: u16, mariadb: u16) -> CommandResult<()> {
-    if http == 0 || mariadb == 0 || http == mariadb {
-        return Err(CommandError(tr!("puertos inválidos", "invalid ports")));
-    }
+async fn mail_status(app: tauri::State<'_, AppState>) -> CommandResult<ampp_core::MailStatus> {
+    Ok(app.supervisor.mail_status().await)
+}
+
+#[tauri::command]
+async fn start_mail(app: tauri::State<'_, AppState>) -> CommandResult<()> {
+    Ok(app.supervisor.start_mail(&app.snapshot()).await?)
+}
+
+#[tauri::command]
+async fn stop_mail(app: tauri::State<'_, AppState>) -> CommandResult<()> {
+    app.supervisor.stop_mail().await;
+    Ok(())
+}
+
+/// Changes the ports. Running services keep the old ones until restarted.
+#[tauri::command]
+fn set_ports(app: tauri::State<AppState>, ports: Ports) -> CommandResult<()> {
+    ports.validate()?;
     app.update(|s| {
-        s.ports.http = http;
-        s.ports.mariadb = mariadb;
+        s.ports = ports;
         Ok(())
     })
 }
@@ -533,6 +572,8 @@ fn open_location(handle: AppHandle, what: String) -> CommandResult<()> {
 #[derive(Serialize)]
 struct MariadbInfo {
     connection: ampp_core::db::Connection,
+    /// Series of the active version (`11.4`): the root password belongs to its data folder.
+    series: Option<String>,
     /// `None` while MariaDB is not running.
     databases: Option<Vec<ampp_core::db::Database>>,
 }
@@ -544,7 +585,35 @@ async fn mariadb_info(app: tauri::State<'_, AppState>) -> CommandResult<MariadbI
     let connection = ampp_core::db::connection(&app.paths, &state);
     let running = app.supervisor.status().await.iter().any(|s| s.tool == Tool::Mariadb && s.running);
     let databases = if running { Some(ampp_core::db::list(&app.paths, &state).await?) } else { None };
-    Ok(MariadbInfo { connection, databases })
+    let series = state
+        .active
+        .get(&Tool::Mariadb)
+        .and_then(|id| install::locate(&app.paths, Tool::Mariadb, id).ok())
+        .map(|inst| inst.minor_version());
+    Ok(MariadbInfo { connection, series, databases })
+}
+
+/// Sets (or, when empty, removes) the root password of the active MariaDB series. The server must
+/// be running; phpMyAdmin picks it up when Apache restarts.
+#[tauri::command]
+async fn set_mariadb_password(app: tauri::State<'_, AppState>, password: String) -> CommandResult<()> {
+    let state = app.snapshot();
+    let running = app.supervisor.status().await.iter().any(|s| s.tool == Tool::Mariadb && s.running);
+    if !running {
+        return Err(CommandError(tr!("inicia MariaDB para cambiar la contraseña", "start MariaDB to change the password")));
+    }
+    ampp_core::db::set_root_password(&app.paths, &state, &password).await?;
+    let id = state.active.get(&Tool::Mariadb).cloned().unwrap_or_default();
+    let series = install::locate(&app.paths, Tool::Mariadb, &id)?.minor_version();
+    app.update(|s| {
+        match password.is_empty() {
+            true => s.mariadb_root_passwords.remove(&series),
+            false => s.mariadb_root_passwords.insert(series, password),
+        };
+        ampp_core::db::client_options(&app.paths, s).map(drop)
+    })?;
+    app.restart_if_running(Tool::Apache).await?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -661,6 +730,35 @@ fn open_project_folder(handle: AppHandle, name: String) -> CommandResult<()> {
     handle.opener().open_path(project.docroot.display().to_string(), None::<&str>).map_err(|e| CommandError(e.to_string()))
 }
 
+/// Argument the login item passes, so the app opens straight into the tray.
+const HIDDEN_ARG: &str = "--hidden";
+
+#[derive(Serialize)]
+struct Startup {
+    /// Open AMPP opens (in the tray) when the user signs in.
+    open_at_login: bool,
+    start_services: bool,
+}
+
+#[tauri::command]
+fn get_startup(handle: AppHandle) -> Startup {
+    Startup {
+        open_at_login: handle.autolaunch().is_enabled().unwrap_or(false),
+        start_services: handle.state::<AppState>().snapshot().start_services_on_open,
+    }
+}
+
+#[tauri::command]
+fn set_startup(handle: AppHandle, open_at_login: bool, start_services: bool) -> CommandResult<()> {
+    let autolaunch = handle.autolaunch();
+    let result = if open_at_login { autolaunch.enable() } else { autolaunch.disable() };
+    result.map_err(|e| CommandError(e.to_string()))?;
+    handle.state::<AppState>().update(|s| {
+        s.start_services_on_open = start_services;
+        Ok(())
+    })
+}
+
 /// Language for Rust-side messages, so the UI can match it.
 #[tauri::command]
 fn get_lang() -> ampp_core::i18n::Lang {
@@ -683,12 +781,14 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::Builder::new().args([HIDDEN_ARG]).build())
         .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let paths = AppPaths::from_system()?;
             paths.ensure()?;
             let mut state = State::load(&paths.state_file())?;
+            let start_services = state.start_services_on_open;
             sync_homebrew(&mut state);
             state.save(&paths.state_file())?;
             let _ = tools::write_shims(&paths, &state, cli_path().as_deref());
@@ -705,6 +805,18 @@ pub fn run() {
                 installing: Mutex::new(HashMap::new()),
             });
             tray::create(app.handle())?;
+
+            // The window starts hidden (tauri.conf.json): the login item keeps it in the tray.
+            if !std::env::args().any(|a| a == HIDDEN_ARG) {
+                tray::show_main_window(app.handle());
+            }
+            if start_services {
+                let handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    let app = handle.state::<AppState>();
+                    app.supervisor.start_all(&app.snapshot()).await;
+                });
+            }
 
             // Swap in the published catalog (security releases, new versions) once it arrives.
             let handle = app.handle().clone();
@@ -756,6 +868,12 @@ pub fn run() {
             open_project_folder,
             get_tls,
             trust_ca,
+            mail_status,
+            start_mail,
+            stop_mail,
+            get_startup,
+            set_startup,
+            set_mariadb_password,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

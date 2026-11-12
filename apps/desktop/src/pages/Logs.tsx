@@ -1,27 +1,44 @@
-import { useEffect, useRef, useState } from "react";
-import { api, TOOL_LABELS, type Tool } from "../lib/api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { api, type LogName } from "../lib/api";
 import { t } from "../lib/i18n";
 import { usePolling } from "../lib/usePolling";
 
+const LOGS: { name: LogName; label: string }[] = [
+  { name: "apache", label: "Apache" },
+  { name: "apache-access", label: t.logs.access },
+  { name: "php", label: "PHP" },
+  { name: "mariadb", label: "MariaDB" },
+  { name: "mailpit", label: "Mailpit" },
+];
+
 export function Logs() {
-  const [tool, setTool] = useState<Tool>("apache");
+  const [name, setName] = useState<LogName>("apache");
   const [text, setText] = useState("");
   const [follow, setFollow] = useState(true);
+  const [query, setQuery] = useState("");
   const pre = useRef<HTMLPreElement>(null);
 
-  usePolling(() => api.readLog(tool).then(setText).catch(() => {}), 1500, [tool]);
+  usePolling(() => api.readLog(name).then(setText).catch(() => {}), 1500, [name]);
+
+  // Case-insensitive filter by line; the whole text when there is no query.
+  const { shown, matches } = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return { shown: text, matches: null };
+    const lines = text.split("\n").filter((l) => l.toLowerCase().includes(q));
+    return { shown: lines.join("\n"), matches: lines.length };
+  }, [text, query]);
 
   useEffect(() => {
     if (follow && pre.current) pre.current.scrollTop = pre.current.scrollHeight;
-  }, [text, follow]);
+  }, [shown, follow]);
 
   return (
     <section className="logs">
       <div className="toolbar">
         <nav className="tabs">
-          {(Object.keys(TOOL_LABELS) as Tool[]).map((name) => (
-            <button key={name} className={name === tool ? "tab active" : "tab"} onClick={() => setTool(name)}>
-              {TOOL_LABELS[name]}
+          {LOGS.map((log) => (
+            <button key={log.name} className={log.name === name ? "tab active" : "tab"} onClick={() => setName(log.name)}>
+              {log.label}
             </button>
           ))}
         </nav>
@@ -30,8 +47,20 @@ export function Logs() {
           {t.logs.follow}
         </label>
       </div>
+      <div className="log-search">
+        <input
+          type="search"
+          value={query}
+          placeholder={t.logs.search}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+        {matches !== null && <span className="muted small">{t.logs.matches(matches)}</span>}
+        <button className="ghost" onClick={() => api.openLocation("logs")}>
+          {t.logs.folder}
+        </button>
+      </div>
       <pre ref={pre} className="log-view">
-        {text || t.logs.empty}
+        {shown || (matches === null ? t.logs.empty : t.logs.noMatches)}
       </pre>
     </section>
   );

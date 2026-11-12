@@ -26,3 +26,19 @@ async fn installs_latest_php_for_this_platform() {
     eprintln!("installed at {} → {entries:?}", dest.display());
     assert!(!entries.is_empty());
 }
+
+#[tokio::test]
+#[ignore = "needs network"]
+async fn installs_mailpit_for_this_platform_and_it_runs() {
+    use ampp_core::tools::{self, Extra};
+    let file = Manifest::bundled().extra(Extra::Mailpit).cloned().expect("the catalog has Mailpit for this platform");
+    let tmp = tempfile::tempdir().unwrap();
+    let paths = AppPaths::new(tmp.path());
+    tools::install(&paths, &file).await.unwrap();
+
+    let exe = tools::file(&paths, Extra::Mailpit);
+    let out = std::process::Command::new(&exe).arg("version").output().expect("the binary must be executable");
+    let text = String::from_utf8_lossy(&out.stdout);
+    eprintln!("{} → {text}", exe.display());
+    assert!(text.contains(&file.version), "{text}");
+}
