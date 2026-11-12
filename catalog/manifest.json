@@ -3,11 +3,51 @@
   "packages": [
     {
       "tool": "apache",
-      "version": "2.4.70",
+      "version": "2.4.69",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-apache-2.4.69/apache-2.4.69-linux-arm64.tar.gz",
+      "sha256": "4948ce31a4ac5357f123602e494fb753c761a313a8a0614aaa8b19272522f92b",
+      "archive": "tar-gz",
+      "size": 8356796
+    },
+    {
+      "tool": "apache",
+      "version": "2.4.69",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-apache-2.4.69/apache-2.4.69-linux-x64.tar.gz",
+      "sha256": "01b19d1306ad6c172f34c3672cbaf354f08136486694396688377e9b2681e265",
+      "archive": "tar-gz",
+      "size": 7619796
+    },
+    {
+      "tool": "apache",
+      "version": "2.4.69",
+      "os": "macos",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-apache-2.4.69/apache-2.4.69-macos-arm64.tar.gz",
+      "sha256": "cc9ad24425e47741947f731fd68d6737224a0ac239125bf34a75b825920993ab",
+      "archive": "tar-gz",
+      "size": 6826496
+    },
+    {
+      "tool": "apache",
+      "version": "2.4.69",
+      "os": "macos",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-apache-2.4.69/apache-2.4.69-macos-x64.tar.gz",
+      "sha256": "8d94b85f9f5900fe5b5f6296c48df2e1da330945a8fffb6629f9f8078ebe8e55",
+      "archive": "tar-gz",
+      "size": 6411388
+    },
+    {
+      "tool": "apache",
+      "version": "2.4.71",
       "os": "windows",
       "arch": "x64",
-      "url": "https://www.apachelounge.com/download/VS18/binaries/httpd-2.4.70-261106-Win64-VS18.zip",
-      "sha256": "b96a40b66a99428b2e4aea48ebe98bab826c768df4ace81f78dd7e26a98ad311",
+      "url": "https://www.apachelounge.com/download/VS18/binaries/httpd-2.4.71-261112-Win64-VS18.zip",
+      "sha256": "44961a929dff16b767b3adbcea55760a942a00239b2891dc55806be34029e1fc",
       "archive": "zip",
       "size": null
     },
@@ -15,41 +55,161 @@
       "tool": "mariadb",
       "version": "10.11.19",
       "os": "linux",
-      "arch": "x64",
-      "url": "https://archive.mariadb.org/mariadb-10.11.19/bintar-linux-systemd-x86_64/mariadb-10.11.19-linux-systemd-x86_64.tar.gz",
-      "sha256": "7efb257927f31f4422f496246b32590d0b7617f3d9dd900e575de761b302d919",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-10.11.19/mariadb-10.11.19-linux-arm64.tar.gz",
+      "sha256": "280e61d324f182ecc87a0d871c375bd7f3ea6f31df6a4e6c583b9f3f44e9c569",
       "archive": "tar-gz",
-      "size": null
+      "size": 99413987
+    },
+    {
+      "tool": "mariadb",
+      "version": "11.4.13",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-11.4.13/mariadb-11.4.13-linux-arm64.tar.gz",
+      "sha256": "eaca7d1a9de7163d229fbe739c066995fb8d752d6077460532a7b22e52ada437",
+      "archive": "tar-gz",
+      "size": 101864867
+    },
+    {
+      "tool": "mariadb",
+      "version": "11.8.9",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-11.8.9/mariadb-11.8.9-linux-arm64.tar.gz",
+      "sha256": "5f510ea2fa4eaad388b619258847107a2b880b988dcef5cb5c8b6c0e58d2cad9",
+      "archive": "tar-gz",
+      "size": 108300219
+    },
+    {
+      "tool": "mariadb",
+      "version": "12.3.3",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-12.3.3/mariadb-12.3.3-linux-arm64.tar.gz",
+      "sha256": "3b6aa593cf8a29382f80b74da7654fffa6f43bf261287af4f794666fa4d25383",
+      "archive": "tar-gz",
+      "size": 109069185
+    },
+    {
+      "tool": "mariadb",
+      "version": "10.11.19",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-10.11.19/mariadb-10.11.19-linux-x64.tar.gz",
+      "sha256": "a334a8fd0c21a715dea781c9f96537508289cbb0066510ea94e8a4bc5cc3b173",
+      "archive": "tar-gz",
+      "size": 94241544
     },
     {
       "tool": "mariadb",
       "version": "11.4.13",
       "os": "linux",
       "arch": "x64",
-      "url": "https://archive.mariadb.org/mariadb-11.4.13/bintar-linux-systemd-x86_64/mariadb-11.4.13-linux-systemd-x86_64.tar.gz",
-      "sha256": "3cebf63914df3154b7cb6d548337eb2be42c773aeb641110446b72e2746cfed7",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-11.4.13/mariadb-11.4.13-linux-x64.tar.gz",
+      "sha256": "4083a7b1954ad56d2ff8d1a529b19cdf58aa63aad12eba5fffcd4f6711492368",
       "archive": "tar-gz",
-      "size": null
+      "size": 96434474
     },
     {
       "tool": "mariadb",
       "version": "11.8.9",
       "os": "linux",
       "arch": "x64",
-      "url": "https://archive.mariadb.org/mariadb-11.8.9/bintar-linux-systemd-x86_64/mariadb-11.8.9-linux-systemd-x86_64.tar.gz",
-      "sha256": "32f8871a2aa38b36aa418b7f4abc6fc0c6ef1ba5a45798cacb2afa52c8a6113b",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-11.8.9/mariadb-11.8.9-linux-x64.tar.gz",
+      "sha256": "0ac2d4b28f8e30be3ec62dbb2fd527c29ede85bdf2dedaee88a02042036b998f",
       "archive": "tar-gz",
-      "size": null
+      "size": 102281493
     },
     {
       "tool": "mariadb",
       "version": "12.3.3",
       "os": "linux",
       "arch": "x64",
-      "url": "https://archive.mariadb.org/mariadb-12.3.3/bintar-linux-systemd-x86_64/mariadb-12.3.3-linux-systemd-x86_64.tar.gz",
-      "sha256": "a12bf7bce08a896cdd01f174f04b4ce1d5da43ec250a5e7fceb9972119514329",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-12.3.3/mariadb-12.3.3-linux-x64.tar.gz",
+      "sha256": "cb54cf3f866f54ff172b8c76575b6e20c29ae8048d6dcdf2df63fd64b0628043",
       "archive": "tar-gz",
-      "size": null
+      "size": 103132397
+    },
+    {
+      "tool": "mariadb",
+      "version": "10.11.19",
+      "os": "macos",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-10.11.19/mariadb-10.11.19-macos-arm64.tar.gz",
+      "sha256": "eae38245e4d285e24d09f8d3735e86c1f387cec1940151cc68fa17e97cb42c3d",
+      "archive": "tar-gz",
+      "size": 87445232
+    },
+    {
+      "tool": "mariadb",
+      "version": "11.4.13",
+      "os": "macos",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-11.4.13/mariadb-11.4.13-macos-arm64.tar.gz",
+      "sha256": "8a498aed917a159ee7ef3d296123b6949a91feb556083b45d82aab1bc88f2919",
+      "archive": "tar-gz",
+      "size": 89476311
+    },
+    {
+      "tool": "mariadb",
+      "version": "11.8.9",
+      "os": "macos",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-11.8.9/mariadb-11.8.9-macos-arm64.tar.gz",
+      "sha256": "536a2494af5ec93866f9ca9d774e8a6f5e7aeada5c5039289e0925497f3bdb13",
+      "archive": "tar-gz",
+      "size": 95107578
+    },
+    {
+      "tool": "mariadb",
+      "version": "12.3.3",
+      "os": "macos",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-12.3.3/mariadb-12.3.3-macos-arm64.tar.gz",
+      "sha256": "708b2c6c3b913c103e7b06967726418f90465f2fea47a25fb52366d97b6399a4",
+      "archive": "tar-gz",
+      "size": 95944643
+    },
+    {
+      "tool": "mariadb",
+      "version": "10.11.19",
+      "os": "macos",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-10.11.19/mariadb-10.11.19-macos-x64.tar.gz",
+      "sha256": "748716599c3dd9b780f8659a792c339734995ee4ba12b24a5f0597fc5219ab98",
+      "archive": "tar-gz",
+      "size": 84500993
+    },
+    {
+      "tool": "mariadb",
+      "version": "11.4.13",
+      "os": "macos",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-11.4.13/mariadb-11.4.13-macos-x64.tar.gz",
+      "sha256": "824cbfa6f1f81f9cbe5570888390e1f45d2da933da87dcd84d68acce73e1f436",
+      "archive": "tar-gz",
+      "size": 86265954
+    },
+    {
+      "tool": "mariadb",
+      "version": "11.8.9",
+      "os": "macos",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-11.8.9/mariadb-11.8.9-macos-x64.tar.gz",
+      "sha256": "f4b193dbe9c98d4ae861d89e09c23e13ec24efb2de15fd7e13291a70cc7b4823",
+      "archive": "tar-gz",
+      "size": 91415994
+    },
+    {
+      "tool": "mariadb",
+      "version": "12.3.3",
+      "os": "macos",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-mariadb-12.3.3/mariadb-12.3.3-macos-x64.tar.gz",
+      "sha256": "d3e4939307eb11a54e213b5499e5c0e3829918fc6f55792ae6978367e2ba082e",
+      "archive": "tar-gz",
+      "size": 92441057
     },
     {
       "tool": "mariadb",
@@ -90,6 +250,166 @@
       "sha256": "4b5706b47148b47c8f36963c8352d1ddee37a1287b4690428f631a74b09b85a0",
       "archive": "zip",
       "size": null
+    },
+    {
+      "tool": "php",
+      "version": "8.2.35",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.2.35/php-8.2.35-linux-arm64.tar.gz",
+      "sha256": "a09916359a2a0d73b2bd9bf31570a7c13896a6e16e629441dccb9e7ed3eacde5",
+      "archive": "tar-gz",
+      "size": 50702140
+    },
+    {
+      "tool": "php",
+      "version": "8.3.36",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.3.36/php-8.3.36-linux-arm64.tar.gz",
+      "sha256": "ee5f75f5ff56b7528ba2dc4337c2dfea8cb81461c44bbd3362e87b394d62ea4c",
+      "archive": "tar-gz",
+      "size": 50907005
+    },
+    {
+      "tool": "php",
+      "version": "8.4.27",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.4.27/php-8.4.27-linux-arm64.tar.gz",
+      "sha256": "e6ce42ab71c30c2d5785681c570db8f2b52c66a0ab6e3439f4ab552b07435fc6",
+      "archive": "tar-gz",
+      "size": 52155019
+    },
+    {
+      "tool": "php",
+      "version": "8.5.12",
+      "os": "linux",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.12/php-8.5.12-linux-arm64.tar.gz",
+      "sha256": "d89f4a3493d270dd6eb9b6a44817309e7c58c4285c6a9ef1a4472c14b841000e",
+      "archive": "tar-gz",
+      "size": 52841120
+    },
+    {
+      "tool": "php",
+      "version": "8.2.35",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.2.35/php-8.2.35-linux-x64.tar.gz",
+      "sha256": "e876c0078f9e15aed2f2a4d9e383ed27f905906cc9eca5a7bb99e3f7d47a17ae",
+      "archive": "tar-gz",
+      "size": 49983316
+    },
+    {
+      "tool": "php",
+      "version": "8.3.36",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.3.36/php-8.3.36-linux-x64.tar.gz",
+      "sha256": "b2d58abfe9610e116e248725bdd1129cc2655b1af28b657e86ccaac54fa6f79c",
+      "archive": "tar-gz",
+      "size": 50179294
+    },
+    {
+      "tool": "php",
+      "version": "8.4.27",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.4.27/php-8.4.27-linux-x64.tar.gz",
+      "sha256": "6ab256cba81137ec4a730d98d8d37195f7fc400b4eebd6d75562579345c7ca7a",
+      "archive": "tar-gz",
+      "size": 51848201
+    },
+    {
+      "tool": "php",
+      "version": "8.5.12",
+      "os": "linux",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.12/php-8.5.12-linux-x64.tar.gz",
+      "sha256": "7572b2ef0fb6798e750fd3291e12ff322a8eab5c51ce2318b8c7d3a461159c37",
+      "archive": "tar-gz",
+      "size": 52539959
+    },
+    {
+      "tool": "php",
+      "version": "8.2.35",
+      "os": "macos",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.2.35/php-8.2.35-macos-arm64.tar.gz",
+      "sha256": "32aca2aeb7cb0eb049ea478e33cf3a710ecb561c3244568e56a42c8e134afe23",
+      "archive": "tar-gz",
+      "size": 51025928
+    },
+    {
+      "tool": "php",
+      "version": "8.3.36",
+      "os": "macos",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.3.36/php-8.3.36-macos-arm64.tar.gz",
+      "sha256": "9efdf2719e79b855d8da17f0bbbf1c04762030ea0e9564c0892198be4e70a561",
+      "archive": "tar-gz",
+      "size": 51248406
+    },
+    {
+      "tool": "php",
+      "version": "8.4.27",
+      "os": "macos",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.4.27/php-8.4.27-macos-arm64.tar.gz",
+      "sha256": "634c28062a106660eb8de7e2f8d7adf68a6ca730064bdbc68600ad010ee79572",
+      "archive": "tar-gz",
+      "size": 52562783
+    },
+    {
+      "tool": "php",
+      "version": "8.5.12",
+      "os": "macos",
+      "arch": "arm64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.12/php-8.5.12-macos-arm64.tar.gz",
+      "sha256": "742c1ad1f7482f85c3d8f8d0d293ca0044da84a4abea2317a750b76c678c85d0",
+      "archive": "tar-gz",
+      "size": 53385437
+    },
+    {
+      "tool": "php",
+      "version": "8.2.35",
+      "os": "macos",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.2.35/php-8.2.35-macos-x64.tar.gz",
+      "sha256": "9b58196521cd6f637a4e2c418191989d36072dfa7543ae7a5c33ea54c7bd83fe",
+      "archive": "tar-gz",
+      "size": 51575416
+    },
+    {
+      "tool": "php",
+      "version": "8.3.36",
+      "os": "macos",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.3.36/php-8.3.36-macos-x64.tar.gz",
+      "sha256": "03228865f497a7d39be2d71799aa334ab175acbac51907ba9a8d758012804e8c",
+      "archive": "tar-gz",
+      "size": 51812975
+    },
+    {
+      "tool": "php",
+      "version": "8.4.27",
+      "os": "macos",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.4.27/php-8.4.27-macos-x64.tar.gz",
+      "sha256": "9d6e079141ac7cb663fe4a609befcb223318888c10fa9ddff72d3be7f11d587c",
+      "archive": "tar-gz",
+      "size": 53672130
+    },
+    {
+      "tool": "php",
+      "version": "8.5.12",
+      "os": "macos",
+      "arch": "x64",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.12/php-8.5.12-macos-x64.tar.gz",
+      "sha256": "3a192cd4a64fe430933f5594c6ce44798e7c77f20104c6ac4961ee7cefbdb0aa",
+      "archive": "tar-gz",
+      "size": 54532011
     },
     {
       "tool": "php",
