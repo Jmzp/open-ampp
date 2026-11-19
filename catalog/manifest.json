@@ -253,103 +253,103 @@
     },
     {
       "tool": "php",
-      "version": "8.2.35",
+      "version": "8.2.36",
       "os": "linux",
       "arch": "arm64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.2.35/php-8.2.35-linux-arm64.tar.gz",
-      "sha256": "a09916359a2a0d73b2bd9bf31570a7c13896a6e16e629441dccb9e7ed3eacde5",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.2.36/php-8.2.36-linux-arm64.tar.gz",
+      "sha256": "44cfa23e751a69e784bc178bc1797c7af0f555620561c4c5f62c4e12a090d2aa",
       "archive": "tar-gz",
-      "size": 50702140
+      "size": 50705612
     },
     {
       "tool": "php",
-      "version": "8.3.36",
+      "version": "8.3.37",
       "os": "linux",
       "arch": "arm64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.3.36/php-8.3.36-linux-arm64.tar.gz",
-      "sha256": "ee5f75f5ff56b7528ba2dc4337c2dfea8cb81461c44bbd3362e87b394d62ea4c",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.3.37/php-8.3.37-linux-arm64.tar.gz",
+      "sha256": "0228e2c29a336629ed53098bf4df11ab5bb70d8d79ebf7529d31956d1db20f65",
       "archive": "tar-gz",
-      "size": 50907005
+      "size": 50901510
     },
     {
       "tool": "php",
-      "version": "8.4.27",
+      "version": "8.4.28",
       "os": "linux",
       "arch": "arm64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.4.27/php-8.4.27-linux-arm64.tar.gz",
-      "sha256": "e6ce42ab71c30c2d5785681c570db8f2b52c66a0ab6e3439f4ab552b07435fc6",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.4.28/php-8.4.28-linux-arm64.tar.gz",
+      "sha256": "74d81a26dbfc9ceea0658bd6535098e22003f26b854dfb99b1d458275941f4e5",
       "archive": "tar-gz",
-      "size": 52155019
+      "size": 52157401
     },
     {
       "tool": "php",
-      "version": "8.5.12",
+      "version": "8.5.13",
       "os": "linux",
       "arch": "arm64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.12/php-8.5.12-linux-arm64.tar.gz",
-      "sha256": "d89f4a3493d270dd6eb9b6a44817309e7c58c4285c6a9ef1a4472c14b841000e",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.13/php-8.5.13-linux-arm64.tar.gz",
+      "sha256": "449f087f90ee9c0410539a8e3300e0575affb622034dbcea7b5af60b7dcedbf3",
       "archive": "tar-gz",
-      "size": 52841120
+      "size": 52841384
     },
     {
       "tool": "php",
-      "version": "8.2.35",
+      "version": "8.2.36",
       "os": "linux",
       "arch": "x64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.2.35/php-8.2.35-linux-x64.tar.gz",
-      "sha256": "e876c0078f9e15aed2f2a4d9e383ed27f905906cc9eca5a7bb99e3f7d47a17ae",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.2.36/php-8.2.36-linux-x64.tar.gz",
+      "sha256": "664557501d48e97ff01348b3053d84d4632ea539b09b7fa3faa68c9ed584ff6b",
       "archive": "tar-gz",
-      "size": 49983316
+      "size": 49982308
     },
     {
       "tool": "php",
-      "version": "8.3.36",
+      "version": "8.3.37",
       "os": "linux",
       "arch": "x64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.3.36/php-8.3.36-linux-x64.tar.gz",
-      "sha256": "b2d58abfe9610e116e248725bdd1129cc2655b1af28b657e86ccaac54fa6f79c",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.3.37/php-8.3.37-linux-x64.tar.gz",
+      "sha256": "8ec1f9953a978943874ddda65b76a21eddea5da07978fbbd9f8ded31fb5c1c84",
       "archive": "tar-gz",
-      "size": 50179294
+      "size": 50185414
     },
     {
       "tool": "php",
-      "version": "8.4.27",
+      "version": "8.4.28",
       "os": "linux",
       "arch": "x64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.4.27/php-8.4.27-linux-x64.tar.gz",
-      "sha256": "6ab256cba81137ec4a730d98d8d37195f7fc400b4eebd6d75562579345c7ca7a",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.4.28/php-8.4.28-linux-x64.tar.gz",
+      "sha256": "655767e16b0197646b19d70ee5a5f356f03d2a435349c1ab8fd9711da9bf055c",
       "archive": "tar-gz",
-      "size": 51848201
+      "size": 51854658
     },
     {
       "tool": "php",
-      "version": "8.5.12",
+      "version": "8.5.13",
       "os": "linux",
       "arch": "x64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.12/php-8.5.12-linux-x64.tar.gz",
-      "sha256": "7572b2ef0fb6798e750fd3291e12ff322a8eab5c51ce2318b8c7d3a461159c37",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.13/php-8.5.13-linux-x64.tar.gz",
+      "sha256": "3e10398b47db0f329832619c7a2831baba6d283e7fc8fa2878c44a92c3788f2e",
       "archive": "tar-gz",
-      "size": 52539959
+      "size": 52549575
     },
     {
       "tool": "php",
-      "version": "8.2.35",
+      "version": "8.2.36",
       "os": "macos",
       "arch": "arm64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.2.35/php-8.2.35-macos-arm64.tar.gz",
-      "sha256": "32aca2aeb7cb0eb049ea478e33cf3a710ecb561c3244568e56a42c8e134afe23",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.2.36/php-8.2.36-macos-arm64.tar.gz",
+      "sha256": "3831566bdfbe6177c3bbc33f8a8d7970b3c0c0c4f1b67cdde96fa82a5927bc2e",
       "archive": "tar-gz",
-      "size": 51025928
+      "size": 51028098
     },
     {
       "tool": "php",
-      "version": "8.3.36",
+      "version": "8.3.37",
       "os": "macos",
       "arch": "arm64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.3.36/php-8.3.36-macos-arm64.tar.gz",
-      "sha256": "9efdf2719e79b855d8da17f0bbbf1c04762030ea0e9564c0892198be4e70a561",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.3.37/php-8.3.37-macos-arm64.tar.gz",
+      "sha256": "8c483a7c4d04371fa80fc957237bb66ac4717b943f6041bf92c136069e5867a3",
       "archive": "tar-gz",
-      "size": 51248406
+      "size": 51250253
     },
     {
       "tool": "php",
@@ -363,53 +363,53 @@
     },
     {
       "tool": "php",
-      "version": "8.5.12",
+      "version": "8.5.13",
       "os": "macos",
       "arch": "arm64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.12/php-8.5.12-macos-arm64.tar.gz",
-      "sha256": "742c1ad1f7482f85c3d8f8d0d293ca0044da84a4abea2317a750b76c678c85d0",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.13/php-8.5.13-macos-arm64.tar.gz",
+      "sha256": "34d903ebec56f89561fe83011c3927957982798e0c77942d1867c00cf5bf8129",
       "archive": "tar-gz",
-      "size": 53385437
+      "size": 53394229
     },
     {
       "tool": "php",
-      "version": "8.2.35",
+      "version": "8.2.36",
       "os": "macos",
       "arch": "x64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.2.35/php-8.2.35-macos-x64.tar.gz",
-      "sha256": "9b58196521cd6f637a4e2c418191989d36072dfa7543ae7a5c33ea54c7bd83fe",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.2.36/php-8.2.36-macos-x64.tar.gz",
+      "sha256": "15bea5ca112ce5bd0f770a6c14d02e073afaaeae03fc4dbceef25fc675816b57",
       "archive": "tar-gz",
-      "size": 51575416
+      "size": 51576784
     },
     {
       "tool": "php",
-      "version": "8.3.36",
+      "version": "8.3.37",
       "os": "macos",
       "arch": "x64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.3.36/php-8.3.36-macos-x64.tar.gz",
-      "sha256": "03228865f497a7d39be2d71799aa334ab175acbac51907ba9a8d758012804e8c",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.3.37/php-8.3.37-macos-x64.tar.gz",
+      "sha256": "31a9c3ef87816221a16ef0cbc9306ada4e69d2816cb8f11ef27459088a16dc82",
       "archive": "tar-gz",
-      "size": 51812975
+      "size": 51813493
     },
     {
       "tool": "php",
-      "version": "8.4.27",
+      "version": "8.4.28",
       "os": "macos",
       "arch": "x64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.4.27/php-8.4.27-macos-x64.tar.gz",
-      "sha256": "9d6e079141ac7cb663fe4a609befcb223318888c10fa9ddff72d3be7f11d587c",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.4.28/php-8.4.28-macos-x64.tar.gz",
+      "sha256": "772978c9384c7ed1ace5731e726a1b30f0b3311a1c319fa9f3c7273d5f636c7c",
       "archive": "tar-gz",
-      "size": 53672130
+      "size": 53673314
     },
     {
       "tool": "php",
-      "version": "8.5.12",
+      "version": "8.5.13",
       "os": "macos",
       "arch": "x64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.12/php-8.5.12-macos-x64.tar.gz",
-      "sha256": "3a192cd4a64fe430933f5594c6ce44798e7c77f20104c6ac4961ee7cefbdb0aa",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.5.13/php-8.5.13-macos-x64.tar.gz",
+      "sha256": "542d13bed0340d170abfc014cf6e451d0c3221025d905f3fc413886e02d53730",
       "archive": "tar-gz",
-      "size": 54532011
+      "size": 54538469
     },
     {
       "tool": "php",
@@ -433,41 +433,41 @@
     },
     {
       "tool": "php",
-      "version": "8.2.35",
+      "version": "8.2.36",
       "os": "windows",
       "arch": "x64",
-      "url": "https://downloads.php.net/~windows/releases/php-8.2.35-1-nts-Win32-vs16-x64.zip",
-      "sha256": "ebe75134c03869826cb1714d31fd5eb96afefa6d9fd35d786971c03020e7bce2",
+      "url": "https://downloads.php.net/~windows/releases/php-8.2.36-nts-Win32-vs16-x64.zip",
+      "sha256": "0b541b7e9db3c55b9324f3f1f30f084a340657d1b57ca4f7a3acaca6b2e8a799",
       "archive": "zip",
       "size": null
     },
     {
       "tool": "php",
-      "version": "8.3.36",
+      "version": "8.3.37",
       "os": "windows",
       "arch": "x64",
-      "url": "https://downloads.php.net/~windows/releases/php-8.3.36-1-nts-Win32-vs16-x64.zip",
-      "sha256": "1a097d52b7a68622cdc723073b61cc70caf79c941218ff65b2d8441dbc6b10d4",
+      "url": "https://downloads.php.net/~windows/releases/php-8.3.37-nts-Win32-vs16-x64.zip",
+      "sha256": "38808a798485e1c0938dfcce7e942131415fc6c7834f83a5a85a4c4edb5539d6",
       "archive": "zip",
       "size": null
     },
     {
       "tool": "php",
-      "version": "8.4.27",
+      "version": "8.4.28",
       "os": "windows",
       "arch": "x64",
-      "url": "https://downloads.php.net/~windows/releases/php-8.4.27-1-nts-Win32-vs17-x64.zip",
-      "sha256": "dbae154a0a89791f36c3d48e68bae797878333e7d6cb5721e74617de59b63ab7",
+      "url": "https://downloads.php.net/~windows/releases/php-8.4.28-nts-Win32-vs17-x64.zip",
+      "sha256": "c1f9280588b7b6ad7b518969022f0b0175f106fab9d0639ad0e4ce7cd47ac1ed",
       "archive": "zip",
       "size": null
     },
     {
       "tool": "php",
-      "version": "8.5.12",
+      "version": "8.5.13",
       "os": "windows",
       "arch": "x64",
-      "url": "https://downloads.php.net/~windows/releases/php-8.5.12-1-nts-Win32-vs17-x64.zip",
-      "sha256": "2a36a2edcb7a5b9252f638fd5e4cf84d7f6e066092654220dc0b63e5cf4e9723",
+      "url": "https://downloads.php.net/~windows/releases/php-8.5.13-nts-Win32-vs17-x64.zip",
+      "sha256": "4ae6c72bc0ca4f6b8f3e9b107874bae0135699f3aabe6c26a1f6103d040eea97",
       "archive": "zip",
       "size": null
     }
