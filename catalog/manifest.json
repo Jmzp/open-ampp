@@ -353,13 +353,13 @@
     },
     {
       "tool": "php",
-      "version": "8.4.27",
+      "version": "8.4.28",
       "os": "macos",
       "arch": "arm64",
-      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.4.27/php-8.4.27-macos-arm64.tar.gz",
-      "sha256": "634c28062a106660eb8de7e2f8d7adf68a6ca730064bdbc68600ad010ee79572",
+      "url": "https://github.com/Jmzp/open-ampp/releases/download/bin-php-8.4.28/php-8.4.28-macos-arm64.tar.gz",
+      "sha256": "80958fde205a284fc7653df166a797185a2ce4ed0c2beb95e75f0fb29345a4ac",
       "archive": "tar-gz",
-      "size": 52562783
+      "size": 52568140
     },
     {
       "tool": "php",
